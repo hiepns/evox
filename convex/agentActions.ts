@@ -1,10 +1,12 @@
 /**
  * Agent Completion API (AGT-124)
+ * + Working Memory Updates (AGT-109)
  *
  * Problem: All 30 tasks attributed to SON because Linear API key = Son's.
  * Solution: Agents write directly to Convex with correct attribution.
  *
  * ADR-001: Attribution comes from caller (agent name), not Linear API key.
+ * ADR-002: Auto-update WORKING.md on task completion.
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
@@ -141,6 +143,11 @@ export const completeTask = mutation({
       createdAt: now,
     });
 
+    // 6. AGT-109: Auto-update WORKING.md with completed task
+    if (args.action === "completed") {
+      await updateWorkingMemoryOnComplete(ctx, agentId, task.linearIdentifier ?? args.ticket, args.summary);
+    }
+
     return {
       success: true,
       taskId: task._id,
@@ -150,6 +157,207 @@ export const completeTask = mutation({
       statusChange: newStatus ? { from: oldStatus, to: newStatus } : null,
       linearIdentifier: task.linearIdentifier,
     };
+  },
+});
+
+/**
+ * AGT-109: Helper to auto-update WORKING.md when task is completed.
+ * Appends completed task to "Recent Completions" section.
+ */
+async function updateWorkingMemoryOnComplete(
+  ctx: { db: any },
+  agentId: string,
+  ticketId: string,
+  summary: string
+) {
+  const now = Date.now();
+  const today = new Date().toISOString().split("T")[0];
+  const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+
+  // Get existing WORKING.md
+  const workingMemories = await ctx.db
+    .query("agentMemory")
+    .withIndex("by_agent_type", (q: any) =>
+      q.eq("agentId", agentId).eq("type", "working")
+    )
+    .collect();
+
+  const existing = workingMemories[0];
+
+  // Build completion entry
+  const completionEntry = `- [x] ${ticketId}: ${summary.slice(0, 80)}${summary.length > 80 ? "..." : ""} (${timestamp})`;
+
+  if (existing) {
+    // Append to Recent Completions section or create it
+    let content = existing.content;
+    const recentSection = "## Recent Completions";
+
+    if (content.includes(recentSection)) {
+      // Insert after the header
+      const lines = content.split("\n");
+      const sectionIdx = lines.findIndex((l: string) => l.trim() === recentSection);
+      if (sectionIdx !== -1) {
+        // Find next section or end
+        let insertIdx = sectionIdx + 1;
+        // Skip empty lines
+        while (insertIdx < lines.length && lines[insertIdx].trim() === "") {
+          insertIdx++;
+        }
+        lines.splice(insertIdx, 0, completionEntry);
+        content = lines.join("\n");
+      }
+    } else {
+      // Add section at end
+      content += `\n\n${recentSection}\n${completionEntry}`;
+    }
+
+    // Update timestamp in header if present
+    content = content.replace(
+      /Last updated: .+/,
+      `Last updated: ${timestamp} UTC`
+    );
+
+    await ctx.db.patch(existing._id, {
+      content,
+      updatedAt: now,
+      version: existing.version + 1,
+    });
+  } else {
+    // Create new WORKING.md with completion
+    const agent = await ctx.db.get(agentId);
+    const content = `# ${agent?.name ?? "AGENT"} — Working Memory
+Last updated: ${timestamp} UTC
+
+## Current Task
+None — session ended
+
+## Recent Completions
+${completionEntry}
+
+## Next Steps
+Check DISPATCH.md for next task
+`;
+
+    await ctx.db.insert("agentMemory", {
+      agentId,
+      type: "working",
+      content,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+  }
+}
+
+/**
+ * AGT-109: Update WORKING.md at session end.
+ * Agents call this to save their working context for next session.
+ *
+ * Usage:
+ * npx convex run agentActions:updateWorkingMemory '{"agent":"sam","currentTask":"AGT-110","status":"In Progress","nextSteps":["Complete daily notes","Test auto-logging"],"blockers":[],"notes":"Schema done, need to add cron."}'
+ */
+export const updateWorkingMemory = mutation({
+  args: {
+    agent: v.union(
+      v.literal("leo"),
+      v.literal("sam"),
+      v.literal("max"),
+      v.literal("ella")
+    ),
+    currentTask: v.optional(v.string()),
+    status: v.optional(v.string()),
+    nextSteps: v.optional(v.array(v.string())),
+    blockers: v.optional(v.array(v.string())),
+    notes: v.optional(v.string()),
+    decisions: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const timestamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+
+    // Resolve agent
+    const agentId = await resolveAgentIdByName(ctx.db, args.agent);
+    const agentDoc = await ctx.db.get(agentId);
+    if (!agentDoc) {
+      throw new Error(`Agent not found: ${args.agent}`);
+    }
+
+    // Get existing WORKING.md to preserve Recent Completions
+    const workingMemories = await ctx.db
+      .query("agentMemory")
+      .withIndex("by_agent_type", (q: any) =>
+        q.eq("agentId", agentId).eq("type", "working")
+      )
+      .collect();
+
+    const existing = workingMemories[0];
+
+    // Extract recent completions from existing if any
+    let recentCompletions = "";
+    if (existing?.content) {
+      const match = existing.content.match(/## Recent Completions\n([\s\S]*?)(?=\n## |$)/);
+      if (match) {
+        recentCompletions = match[1].trim();
+      }
+    }
+
+    // Build new WORKING.md
+    const sections = [
+      `# ${agentDoc.name} — Working Memory`,
+      `Last updated: ${timestamp} UTC`,
+      "",
+      "## Current Task",
+      args.currentTask ?? "None",
+      "",
+      "## Status",
+      args.status ?? "Idle",
+    ];
+
+    if (args.decisions?.length) {
+      sections.push("", "## Recent Decisions");
+      args.decisions.forEach((d) => sections.push(`- ${d}`));
+    }
+
+    if (args.blockers?.length) {
+      sections.push("", "## Blockers");
+      args.blockers.forEach((b) => sections.push(`- ${b}`));
+    } else {
+      sections.push("", "## Blockers", "None");
+    }
+
+    if (args.nextSteps?.length) {
+      sections.push("", "## Next Steps");
+      args.nextSteps.forEach((s, i) => sections.push(`${i + 1}. ${s}`));
+    }
+
+    if (args.notes) {
+      sections.push("", "## Notes", args.notes);
+    }
+
+    if (recentCompletions) {
+      sections.push("", "## Recent Completions", recentCompletions);
+    }
+
+    const content = sections.join("\n");
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        content,
+        updatedAt: now,
+        version: existing.version + 1,
+      });
+      return { success: true, updated: true, version: existing.version + 1 };
+    } else {
+      const id = await ctx.db.insert("agentMemory", {
+        agentId,
+        type: "working",
+        content,
+        createdAt: now,
+        updatedAt: now,
+        version: 1,
+      });
+      return { success: true, updated: false, created: true, id };
+    }
   },
 });
 
