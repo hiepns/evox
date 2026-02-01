@@ -347,10 +347,12 @@ export const remove = mutation({
   },
 });
 
-// UPSERT - Create or update task by linearId (for Linear sync). ADR-001: activity uses agentName from caller, NOT Linear API key.
+// UPSERT - Create or update task by linearId (for Linear sync). ADR-001: activity uses agentName from caller. AGT-134: task.agentName from Linear assignee (Son→max, Sam→sam, Leo→leo).
 export const upsertByLinearId = mutation({
   args: {
     agentName: v.string(),
+    /** AGT-134: task attribution for Standup (from Linear assignee: Son→max, Sam→sam, Leo→leo) */
+    taskAgentName: v.optional(v.string()),
     projectId: v.optional(v.id("projects")),
     linearId: v.string(),
     linearIdentifier: v.string(),
@@ -399,6 +401,7 @@ export const upsertByLinearId = mutation({
         updatedAt: args.updatedAt,
         linearIdentifier: args.linearIdentifier,
         linearUrl: args.linearUrl,
+        ...(args.taskAgentName != null && { agentName: args.taskAgentName }),
       });
 
       if (statusChanged) {
@@ -439,6 +442,7 @@ export const upsertByLinearId = mutation({
         linearId: args.linearId,
         linearIdentifier: args.linearIdentifier,
         linearUrl: args.linearUrl,
+        ...(args.taskAgentName != null && { agentName: args.taskAgentName }),
       });
 
       await ctx.db.insert("activities", {

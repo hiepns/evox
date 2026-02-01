@@ -60,10 +60,13 @@ export default defineSchema({
     linearId: v.optional(v.string()),
     linearIdentifier: v.optional(v.string()), // e.g., "AGT-72"
     linearUrl: v.optional(v.string()),
+    // AGT-134: attribution for Standup (Son→max, Sam→sam, Leo→leo); group by agentName not assignee
+    agentName: v.optional(v.string()),
   })
     .index("by_project", ["projectId"])
     .index("by_status", ["status"])
     .index("by_assignee", ["assignee"])
+    .index("by_agentName", ["agentName"])
     .index("by_priority", ["priority"])
     .index("by_project_status", ["projectId", "status"])
     .index("by_linearId", ["linearId"]),

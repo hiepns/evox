@@ -130,6 +130,13 @@ export const syncAll = internalAction({
         throw new Error("EVOX project not found. Run seed first.");
       }
 
+      // AGT-134: Map Linear assignee name → taskAgentName for Standup attribution (Son→max, Sam→sam, Leo→leo)
+      const assigneeNameToTaskAgent: Record<string, string> = {
+        son: "max",
+        sam: "sam",
+        leo: "leo",
+      };
+
       // Upsert each task
       const results = await Promise.all(
         linearIssues.map(async (issue) => {
@@ -141,9 +148,14 @@ export const syncAll = internalAction({
             );
             assigneeId = matchedAgent?._id;
           }
+          const taskAgentName =
+            issue.assigneeName != null
+              ? assigneeNameToTaskAgent[issue.assigneeName.toLowerCase()]
+              : undefined;
 
           return await ctx.runMutation(api.tasks.upsertByLinearId, {
             agentName: "max",
+            taskAgentName,
             projectId: evoxProject._id,
             linearId: issue.linearId,
             linearIdentifier: issue.linearIdentifier,

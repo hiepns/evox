@@ -2,8 +2,8 @@ import { v } from "convex/values";
 import { query } from "./_generated/server";
 
 /**
- * Get daily standup report per agent
- * Returns breakdown of completed, in-progress, and blocked tasks for each agent
+ * Get daily standup report per agent (AGT-134: group by task.agentName, not assignee).
+ * Returns breakdown of completed, in-progress, backlog, blocked for each canonical agent (max, sam, leo).
  *
  * @param startTs - Start of day (UTC ms). Frontend sends user's local day range.
  * @param endTs - End of day (UTC ms).
@@ -19,14 +19,10 @@ export const getDaily = query({
     const dayEnd =
       args.endTs ?? new Date(new Date().toISOString().split("T")[0]).setHours(23, 59, 59, 999);
 
-    // Get all agents
-    const agents = await ctx.db.query("agents").collect();
-
-    // Get all tasks
+    // AGT-134: Use agentMappings (max, sam, leo) for column order; group tasks by task.agentName
+    const mappings = await ctx.db.query("agentMappings").collect();
     const allTasks = await ctx.db.query("tasks").collect();
 
-    // Get activities for the day to track task completions
-    // Note: Convex indexes don't support range queries, so we filter after fetching
     const allActivities = await ctx.db
       .query("activities")
       .withIndex("by_created_at")
@@ -36,46 +32,48 @@ export const getDaily = query({
       (a) => a.createdAt >= dayStart && a.createdAt <= dayEnd
     );
 
-    // Build per-agent report
+    // Task IDs moved to "done" today (any agent) — for "completed today" column
+    const completedTaskIdsToday = new Set(
+      activities
+        .filter(
+          (a) =>
+            a.action === "updated_task_status" &&
+            (a.metadata as { to?: string } | undefined)?.to === "done"
+        )
+        .map((a) => a.target)
+    );
+
     const agentReports = await Promise.all(
-      agents.map(async (agent) => {
-        // Completed: tasks moved to "done" status today (attribution from activity.agent).
-        // Note: Pre-AGT-124 Linear sync may have attributed to wrong agent; consider backfill
-        // mutation to re-attribute AGT-98→101 etc. to correct agents if needed.
-        const completedTaskIds = activities
-          .filter(
-            (a) =>
-              a.agent === agent._id &&
-              a.action === "updated_task_status" &&
-              a.metadata?.to === "done"
-          )
-          .map((a) => a.target);
+      mappings.map(async (mapping) => {
+        const agent = await ctx.db.get(mapping.convexAgentId);
+        if (!agent) return null;
+        const canonicalName = mapping.name;
 
-        const completedTasks = allTasks.filter((t) =>
-          completedTaskIds.includes(t._id)
+        // AGT-134: filter tasks by task.agentName (not assignee)
+        const byAgentName = (t: { agentName?: string | null }) =>
+          (t.agentName ?? "").toLowerCase() === canonicalName.toLowerCase();
+
+        const completedTasks = allTasks.filter(
+          (t) =>
+            byAgentName(t) &&
+            t.status === "done" &&
+            completedTaskIdsToday.has(t._id)
         );
-
-        // In Progress: currently assigned tasks with in_progress status
         const inProgressTasks = allTasks.filter(
-          (t) => t.assignee === agent._id && t.status === "in_progress"
+          (t) => byAgentName(t) && t.status === "in_progress"
         );
-
-        // Backlog: status is "backlog" or "todo" (do not count as blocked)
         const backlogTasks = allTasks.filter(
           (t) =>
-            t.assignee === agent._id &&
+            byAgentName(t) &&
             (t.status === "backlog" || t.status === "todo")
         );
-
-        // Blocked: only tasks with "blocked" in title/description (or future blocked status)
         const blockedTasks = allTasks.filter(
           (t) =>
-            t.assignee === agent._id &&
+            byAgentName(t) &&
             (t.title.toLowerCase().includes("blocked") ||
               t.description.toLowerCase().includes("blocked"))
         );
 
-        // Count activities for this agent today
         const todayActivities = activities.filter(
           (a) => a.agent === agent._id
         ).length;
@@ -120,7 +118,7 @@ export const getDaily = query({
     return {
       startTs: dayStart,
       endTs: dayEnd,
-      agents: agentReports,
+      agents: agentReports.filter((r): r is NonNullable<typeof r> => r != null),
     };
   },
 });

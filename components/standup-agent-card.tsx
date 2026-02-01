@@ -47,23 +47,9 @@ export function StandupAgentCard({
         <h3 className="font-semibold text-zinc-50">{name}</h3>
       </div>
 
-      {/* Done Section */}
-      <div className="space-y-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-green-500">
-          Done ({done.length})
-        </h4>
-        {done.length > 0 ? (
-          <div className="space-y-1">
-            {done.map((task) => (
-              <StandupTaskItem key={task.id} {...task} />
-            ))}
-          </div>
-        ) : (
-          <p className="px-3 py-2 text-xs text-zinc-600">No completed tasks</p>
-        )}
-      </div>
+      {/* AGT-133 Leo: order In Progress → Backlog → Done */}
 
-      {/* WIP Section */}
+      {/* In Progress */}
       <div className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-yellow-500">
           In Progress ({wip.length})
@@ -79,7 +65,7 @@ export function StandupAgentCard({
         )}
       </div>
 
-      {/* Backlog Section (status backlog or todo) */}
+      {/* Backlog (status backlog or todo) */}
       <div className="space-y-2">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
           Backlog ({backlog.length})
@@ -92,6 +78,22 @@ export function StandupAgentCard({
           </div>
         ) : (
           <p className="px-3 py-2 text-xs text-zinc-600">No backlog tasks</p>
+        )}
+      </div>
+
+      {/* Done */}
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-green-500">
+          Done ({done.length})
+        </h4>
+        {done.length > 0 ? (
+          <div className="space-y-1">
+            {done.map((task) => (
+              <StandupTaskItem key={task.id} {...task} />
+            ))}
+          </div>
+        ) : (
+          <p className="px-3 py-2 text-xs text-zinc-600">No completed tasks</p>
         )}
       </div>
 
