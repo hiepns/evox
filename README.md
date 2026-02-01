@@ -1,79 +1,181 @@
-# EVOX - Mission Control
+<p align="center">
+  <img src="public/evox-logo.svg" alt="EVOX" width="80" />
+</p>
 
-A real-time dashboard for orchestrating AI agents that collaborate on software development tasks. Agents pick up tickets, write code, commit, and report back. You review and steer.
+<h1 align="center">EVOX — Mission Control</h1>
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
-![Convex](https://img.shields.io/badge/Convex-Backend-orange)
-![Linear](https://img.shields.io/badge/Linear-Sync-blue)
-![Status](https://img.shields.io/badge/Status-MVP%2083%25-green)
+<p align="center">
+  <strong>An AI agent orchestration system built from first principles.</strong>
+</p>
 
-## What is this?
+<p align="center">
+  <a href="https://evox-ten.vercel.app">Live Demo</a> · <a href="#architecture">Architecture</a> · <a href="#quick-start">Quick Start</a> · <a href="#roadmap">Roadmap</a>
+</p>
 
-EVOX is a mission control interface for managing a team of AI coding agents. Instead of one AI chatbot doing everything, EVOX splits work across specialized agents that coordinate autonomously:
+<p align="center">
+  <img src="https://img.shields.io/github/stars/sonpiaz/evox?style=social" />
+  <img src="https://img.shields.io/github/forks/sonpiaz/evox?style=social" />
+</p>
 
-- **Max** (PM) - Creates tickets, tracks progress, writes retros
-- **Sam** (Backend) - Convex functions, API logic, data layer
-- **Leo** (Frontend) - React components, UI, styling
+---
 
-Linear is the source of truth. EVOX syncs every 2 minutes, tracks status changes, and surfaces everything in a live dashboard. The human (you) jumps in when agents need direction, architecture decisions, or feedback.
+## The Question
 
-## Features
+> **"Khi một AI agent bắt đầu một session mới, nó mất toàn bộ context. Làm sao để nó hoạt động liên tục như một con người thực sự?"**
+>
+> *When an AI agent starts a new session, it loses everything. How do you make it work continuously — like a real human teammate?*
 
-- **Dashboard** - Task counts, agent status, recent activity feed
-- **Tasks Kanban** - Backlog / Todo / In Progress / Done columns, synced from Linear
-- **Daily Standup** - Per-agent breakdown of completed, in progress, and blocked work
-- **Activity Feed** - Timestamped log of every status change
-- **Linear Sync** - Bi-directional sync on a 2-minute cron, with automatic activity creation on status changes
-- **Agent Cards** - Real-time status, role, and current task for each agent
+This isn't a theoretical question. It's the reason EVOX exists.
 
-## Stack
+Most AI agent frameworks focus on **what agents can do** — tool calling, code generation, task execution. But they ignore the harder question: **what happens when the session ends?**
 
-| Layer | Tech |
-|-------|------|
-| Frontend | Next.js 15, React, shadcn/ui, Tailwind CSS |
-| Backend | Convex (realtime database + serverless functions) |
-| Project Management | Linear (via API sync) |
-| Deploy | Vercel |
-| Theme | Dark mode |
+The agent forgets. Every conversation, every decision, every piece of context — gone. You start over. Every. Single. Time.
+
+We didn't start by looking at other agent frameworks. We started by asking: *what are the fundamental truths about AI agents that cannot be argued with?*
+
+---
+
+## Five Truths
+
+Everything in EVOX is derived from five irreducible truths. Not borrowed from another project. Not inspired by a trend. These are constraints imposed by physics and logic:
+
+**Truth 1 — LLMs have no memory between sessions.**
+Every new invocation is a blank page. This isn't a bug to fix; it's a law of the architecture. Therefore: *state must live outside the model*, in a persistent layer the agent reads on boot.
+
+**Truth 2 — Context windows are finite.**
+You can't dump an agent's entire history into a prompt. Therefore: *memory must be hierarchical* — working state (what I'm doing now), daily notes (what happened today), long-term memory (who I am and what I've learned).
+
+**Truth 3 — Multiple agents on one codebase will collide.**
+If two agents don't know what the other is doing, they'll overwrite each other's work. Therefore: *agents need a shared communication layer* — not because it's a nice feature, but because it's the only way to prevent chaos.
+
+**Truth 4 — AI agents don't wake up on their own.**
+No heartbeat. No initiative. No autonomous behavior — unless something triggers them. Therefore: *you need a scheduler or event system*. This is a hardware constraint, not a design choice.
+
+**Truth 5 — AI output is not 100% reliable.**
+Agents will make mistakes. Ship bugs. Misunderstand requirements. Therefore: *you need permission levels* — what the agent can do alone, and what requires human approval. This is risk management, not a feature.
+
+From these five truths, the entire architecture of EVOX follows logically.
+
+---
+
+## What EVOX Actually Is
+
+EVOX is a **mission control dashboard** for orchestrating AI coding agents. You define agents with roles, assign them tasks from Linear, and they work — while you watch, review, and intervene only when needed.
+
+Think of it as the **mission control room at NASA**, but for your AI dev team.
+
+```
+┌─────────────────────────────────────────────────┐
+│                  MISSION CONTROL                 │
+│                                                  │
+│   ┌─────────┐  ┌─────────┐  ┌─────────┐        │
+│   │   MAX   │  │   SAM   │  │   LEO   │        │
+│   │   PM    │  │ Backend │  │Frontend │        │
+│   │ Planning│  │  Code   │  │   UI    │        │
+│   └────┬────┘  └────┬────┘  └────┬────┘        │
+│        │            │            │               │
+│        └────────────┼────────────┘               │
+│                     │                            │
+│              ┌──────┴──────┐                     │
+│              │   CONVEX    │ ← Shared Brain      │
+│              │  Real-time  │                     │
+│              │  Database   │                     │
+│              └──────┬──────┘                     │
+│                     │                            │
+│        ┌────────────┼────────────┐               │
+│        │            │            │               │
+│   ┌────┴────┐ ┌─────┴────┐ ┌────┴────┐         │
+│   │ Linear  │ │  GitHub  │ │  Slack  │         │
+│   │  Tasks  │ │ Commits  │ │ Alerts  │         │
+│   └─────────┘ └──────────┘ └─────────┘         │
+│                                                  │
+│   👤 SON — Human in the loop (reviews only)     │
+└─────────────────────────────────────────────────┘
+```
+
+### The Agents
+
+| Agent | Role | Specialty |
+|-------|------|-----------|
+| **MAX** | Product Manager | Breaks down features into tasks, manages priorities, reviews PRs |
+| **SAM** | Backend Engineer | API design, database schemas, server logic, Convex functions |
+| **LEO** | Frontend Engineer | React components, UI/UX implementation, responsive design |
+
+Each agent has:
+- **Identity** — who they are, what they're good at
+- **Memory** — what they're currently working on, what happened before
+- **Communication** — ability to talk to other agents and receive instructions
+- **Autonomy levels** — what they can do alone vs. what needs human approval
+
+---
 
 ## Architecture
 
+EVOX is built on one core principle: **Convex is the shared brain.**
+
+Agents are *runtime-agnostic*. Whether they run via Claude Code, Cursor, or a future always-on daemon like OpenClaw — the persistent state lives in Convex. Swap the runtime, keep the memory.
+
 ```
-Linear API
-    │
-    ▼ (every 2 min)
-┌─────────────────────────────┐
-│  Convex Backend              │
-│  ├── linearSync:syncAll      │
-│  ├── tasks table (39)        │
-│  ├── activities table (43)   │
-│  ├── agents table (3)        │
-│  └── projects table (4)      │
-└─────────────┬───────────────┘
-              │ useQuery (realtime)
-              ▼
-┌─────────────────────────────┐
-│  Next.js 15 Frontend         │
-│  ├── Dashboard               │
-│  ├── Tasks Kanban            │
-│  ├── Daily Standup           │
-│  ├── Activity Feed           │
-│  └── Agent Cards             │
-└─────────────┬───────────────┘
-              │
-              ▼
-         Vercel (prod)
+Agent Boot Sequence (every session):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Read AGENTS.md     → "How does this team operate?"
+2. Read SOUL.md       → "Who am I? What am I good at?"
+3. Read WORKING.md    → "What was I doing last time?"
+4. Check @mentions    → "Did anyone need me?"
+5. Check assignments  → "What tasks are mine?"
+6. Act — or report HEARTBEAT_OK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Cold start to productive: ~30 seconds
 ```
 
-## Getting Started
+### Tech Stack
 
-### Prerequisites
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Framework | Next.js 14 (App Router) | Server components, streaming |
+| Database | Convex | Real-time sync, no polling needed |
+| Styling | Tailwind CSS + shadcn/ui | Rapid UI, consistent design system |
+| Task Management | Linear API | Where the work actually lives |
+| Deployment | Vercel | Zero-config, preview deploys |
+| AI Runtime | Claude Code / Cursor | Interchangeable by design |
 
-- Node.js 18+
-- Convex account
-- Linear account + API key
+### Key Design Decisions
 
-### Setup
+**Why Convex over Supabase/Firebase?**
+Real-time reactivity out of the box. When SAM updates a task status, LEO's dashboard reflects it instantly. No WebSocket boilerplate. No polling intervals. The database *is* the event system.
+
+**Why Linear over building our own task system?**
+Linear is where real engineering teams already work. EVOX syncs bi-directionally — agents pull tasks from Linear, and status changes push back. No context switching. No duplicate systems.
+
+**Why runtime-agnostic?**
+The AI runtime landscape changes monthly. Locking into one runtime is a bet against the future. EVOX's value is in the **orchestration layer** (memory, communication, coordination) — not in which CLI tool executes the code.
+
+---
+
+## Features
+
+### Built ✅
+- **Dashboard** — Real-time overview with task counts, agent status, activity feed
+- **Agent Cards** — Live status indicators (Online/Busy/Idle), role badges, active tasks
+- **Task Board** — Kanban view synced with Linear, drag-and-drop assignment
+- **Activity Feed** — Real-time log of all agent actions and status changes
+- **Linear Sync** — Bi-directional sync with 2-minute auto-refresh + manual "Sync Now"
+- **Multi-Project** — Switch between projects, filter by team
+- **Heartbeat System** — Agent health monitoring via CLI + API endpoint
+- **Task Assignment UI** — Assign tasks to specific agents from the dashboard
+- **Standup View** — Daily standup summary page
+
+### Building 🔨
+- **Agent Memory System** — SOUL.md + WORKING.md + daily notes per agent
+- **@Mentions & Notifications** — Agent-to-agent communication
+- **Comment Threads** — Discussion on tasks between agents
+- **Heartbeat Scheduler** — Staggered cron jobs (Max :00, Sam :05, Leo :10)
+- **Agent Levels** — Intern → Specialist → Lead autonomy progression
+- **Execution Engine** — Auto-run tasks, commit to GitHub, report results
+
+---
+
+## Quick Start
 
 ```bash
 # Clone
@@ -86,70 +188,97 @@ npm install
 # Set up Convex
 npx convex dev
 
-# Environment variables
+# Configure environment
 cp .env.example .env.local
-# Add your NEXT_PUBLIC_CONVEX_URL and LINEAR_API_KEY
-```
+# Add your CONVEX_URL and LINEAR_API_KEY
 
-### Environment Variables
-
-| Variable | Where | Description |
-|----------|-------|-------------|
-| `NEXT_PUBLIC_CONVEX_URL` | `.env.local` + Vercel | Convex deployment URL |
-| `LINEAR_API_KEY` | Convex env | Linear API key for sync |
-
-```bash
-# Set Linear key in Convex
-npx convex env set LINEAR_API_KEY your_key_here
-```
-
-### Run
-
-```bash
-# Terminal 1: Convex backend
-npx convex dev
-
-# Terminal 2: Next.js frontend
+# Run
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000) and you'll see Mission Control.
 
-## Project Status
+### Environment Variables
 
-**MVP: 83% complete** (30/39 issues done)
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CONVEX_DEPLOYMENT` | Yes | Your Convex deployment URL |
+| `NEXT_PUBLIC_CONVEX_URL` | Yes | Public Convex URL for client |
+| `LINEAR_API_KEY` | Yes | Linear API key for task sync |
 
-| Phase | Status |
-|-------|--------|
-| P1 Foundation (schema, CRUD, UI shell) | Done |
-| P2 Communication (messages, notifications) | Done |
-| P3 Heartbeat/CLI | Done |
-| P4 Linear Sync | Done (4 polish bugs remaining) |
-| P3 Execution Engine | Backlog |
-| P5 Advanced (Slack, GitHub auto-commit) | Partial |
+---
 
-## How It Was Built
+## Project Structure
 
-This project was built using AI agents orchestrated through Claude and Cursor:
+```
+evox/
+├── .claude/           # Agent configuration + dispatch rules
+├── app/               # Next.js App Router pages
+├── components/        # React components (dashboard, agents, tasks)
+├── convex/            # Convex schema, functions, real-time queries
+├── hooks/             # Custom React hooks
+├── lib/               # Utilities, Linear API, helpers
+└── public/            # Static assets
+```
 
-- **Claude (claude.ai)** as Max the PM - managing Linear tickets, writing specs, diagnosing bugs from screenshots, updating project state
-- **Claude Code / Cursor** as Sam and Leo - writing and committing code based on specs from Max
-- **Human (Son)** as technical lead - reviewing output, providing feedback, making architecture decisions
+---
 
-The feedback loop: Linear ticket created, agent picks it up, codes the solution, commits, deploys. Human reviews screenshots, files bugs if needed, agents fix. Rinse and repeat.
+## Roadmap
 
-## What's Next
+Built from first principles. Each phase solves a specific truth.
 
-- **Execution Engine** - Agents autonomously pick tasks, run code, commit to GitHub
-- **Auto-PR** - Agents create pull requests, human approves
-- **Slack Integration** - Notifications on task completion and blockers
+| Phase | Focus | Solves | Status |
+|-------|-------|--------|--------|
+| **1–3** | Dashboard, Task Board, Linear Sync | Foundation | ✅ Done |
+| **4A** | Agent Identity & Memory | Truth 1, 2 | 🔨 Next |
+| **4B** | Agent Communication | Truth 3 | 📋 Planned |
+| **4C** | Heartbeat & Automation | Truth 4 | 📋 Planned |
+| **5** | Execution Engine | Truth 5 | 📋 Planned |
+
+**End state:** A team of AI agents that remember, communicate, wake up on schedule, execute tasks, and ask for help when they're uncertain — while you focus on architecture decisions and strategy.
+
+---
+
+## Philosophy
+
+EVOX isn't built by copying another agent framework. It's built by asking:
+
+*"What must be true for AI agents to function as a real team?"*
+
+Every feature exists because a fundamental constraint demands it. If a constraint doesn't demand it, we don't build it.
+
+This means EVOX will always be **smaller** than frameworks that bolt on features for marketing. But every piece will be **load-bearing**. Nothing decorative. Nothing borrowed without understanding.
+
+---
+
+## Contributing
+
+EVOX is open source and we welcome contributions. Whether it's:
+
+- 🐛 Bug reports and fixes
+- 💡 Feature suggestions grounded in real problems
+- 📖 Documentation improvements
+- 🧪 Testing and feedback
+
+Please open an issue or PR. If you're proposing a new feature, explain **which truth it solves** — we take first principles seriously.
+
+---
+
+## Star History
+
+If this project resonates with you, a ⭐ helps others discover it.
+
+[![Star History Chart](https://api.star-history.com/svg?repos=sonpiaz/evox&type=Date)](https://star-history.com/#sonpiaz/evox&Date)
+
+---
 
 ## License
 
-MIT
+MIT — Use it, fork it, build on it.
 
-## Author
+---
 
-**Son Piaz** ([@sonpiaz](https://github.com/sonpiaz))
-
-Built with AI agents, for AI agents.
+<p align="center">
+  <strong>Built by <a href="https://github.com/sonpiaz">Son Piaz</a></strong><br/>
+  CEO @ <a href="https://affitor.com">Affitor</a> · Building the future of AI-native teams
+</p>
