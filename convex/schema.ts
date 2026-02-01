@@ -15,7 +15,9 @@ export default defineSchema({
     currentTask: v.optional(v.id("tasks")),
     avatar: v.string(),
     lastSeen: v.number(),
-  }).index("by_status", ["status"]),
+  })
+    .index("by_status", ["status"])
+    .index("by_name", ["name"]),
 
   // Task management
   tasks: defineTable({
@@ -38,10 +40,15 @@ export default defineSchema({
     createdBy: v.id("agents"),
     createdAt: v.number(),
     updatedAt: v.number(),
+    // Linear integration fields
+    linearId: v.optional(v.string()),
+    linearIdentifier: v.optional(v.string()), // e.g., "AGT-72"
+    linearUrl: v.optional(v.string()),
   })
     .index("by_status", ["status"])
     .index("by_assignee", ["assignee"])
-    .index("by_priority", ["priority"]),
+    .index("by_priority", ["priority"])
+    .index("by_linearId", ["linearId"]),
 
   // Communication
   messages: defineTable({
@@ -83,6 +90,7 @@ export default defineSchema({
     message: v.string(),
     read: v.boolean(),
     relatedTask: v.optional(v.id("tasks")),
+    messageId: v.optional(v.id("messages")),
     createdAt: v.number(),
   })
     .index("by_recipient", ["to"])

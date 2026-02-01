@@ -259,3 +259,79 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+// UPSERT - Create or update task by linearId (for Linear sync)
+export const upsertByLinearId = mutation({
+  args: {
+    linearId: v.string(),
+    linearIdentifier: v.string(),
+    linearUrl: v.string(),
+    title: v.string(),
+    description: v.string(),
+    status: v.union(
+      v.literal("backlog"),
+      v.literal("todo"),
+      v.literal("in_progress"),
+      v.literal("review"),
+      v.literal("done")
+    ),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("urgent")
+    ),
+    assignee: v.optional(v.id("agents")),
+    createdBy: v.id("agents"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Check if task with this linearId exists
+    const existingTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_linearId", (q) => q.eq("linearId", args.linearId))
+      .collect();
+
+    const existingTask = existingTasks[0];
+
+    if (existingTask) {
+      // Update existing task
+      await ctx.db.patch(existingTask._id, {
+        title: args.title,
+        description: args.description,
+        status: args.status,
+        priority: args.priority,
+        assignee: args.assignee,
+        updatedAt: args.updatedAt,
+        linearIdentifier: args.linearIdentifier,
+        linearUrl: args.linearUrl,
+      });
+
+      return {
+        taskId: existingTask._id,
+        created: false,
+      };
+    } else {
+      // Create new task
+      const taskId = await ctx.db.insert("tasks", {
+        title: args.title,
+        description: args.description,
+        status: args.status,
+        priority: args.priority,
+        assignee: args.assignee,
+        createdBy: args.createdBy,
+        createdAt: args.createdAt,
+        updatedAt: args.updatedAt,
+        linearId: args.linearId,
+        linearIdentifier: args.linearIdentifier,
+        linearUrl: args.linearUrl,
+      });
+
+      return {
+        taskId,
+        created: true,
+      };
+    }
+  },
+});

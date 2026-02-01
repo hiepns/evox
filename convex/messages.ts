@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // CREATE
 export const send = mutation({
@@ -34,19 +35,12 @@ export const send = mutation({
       createdAt: now,
     });
 
-    // Create notifications for mentions
-    if (args.mentions && args.mentions.length > 0) {
-      for (const mentionedAgent of args.mentions) {
-        await ctx.db.insert("notifications", {
-          to: mentionedAgent,
-          type: "mention",
-          title: "You were mentioned",
-          message: args.content.substring(0, 100),
-          read: false,
-          createdAt: now,
-        });
-      }
-    }
+    // Process @mentions and create notifications
+    await ctx.scheduler.runAfter(0, internal.mentions.processMessageMentions, {
+      messageId,
+      fromAgentId: args.from,
+      content: args.content,
+    });
 
     return messageId;
   },

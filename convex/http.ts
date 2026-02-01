@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -142,6 +143,32 @@ http.route({
       console.error("Get heartbeat error:", error);
       return new Response(
         JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+// POST /api/linear-sync - Trigger Linear sync
+http.route({
+  path: "/api/linear-sync",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      // Trigger Linear sync action
+      const result = await ctx.runAction(api.linearSync.syncFromLinear, {});
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Linear sync trigger error:", error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: error instanceof Error ? error.message : "Internal server error"
+        }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
