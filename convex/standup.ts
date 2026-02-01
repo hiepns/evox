@@ -39,7 +39,9 @@ export const getDaily = query({
     // Build per-agent report
     const agentReports = await Promise.all(
       agents.map(async (agent) => {
-        // Completed: tasks moved to "done" status today
+        // Completed: tasks moved to "done" status today (attribution from activity.agent).
+        // Note: Pre-AGT-124 Linear sync may have attributed to wrong agent; consider backfill
+        // mutation to re-attribute AGT-98→101 etc. to correct agents if needed.
         const completedTaskIds = activities
           .filter(
             (a) =>
@@ -58,13 +60,18 @@ export const getDaily = query({
           (t) => t.assignee === agent._id && t.status === "in_progress"
         );
 
-        // Blocked: tasks with "blocked" in title/description or specific blocked status
-        // Note: We don't have a "blocked" status in schema yet, so we check for keyword
+        // Backlog: status is "backlog" or "todo" (do not count as blocked)
+        const backlogTasks = allTasks.filter(
+          (t) =>
+            t.assignee === agent._id &&
+            (t.status === "backlog" || t.status === "todo")
+        );
+
+        // Blocked: only tasks with "blocked" in title/description (or future blocked status)
         const blockedTasks = allTasks.filter(
           (t) =>
             t.assignee === agent._id &&
-            (t.status === "backlog" ||
-              t.title.toLowerCase().includes("blocked") ||
+            (t.title.toLowerCase().includes("blocked") ||
               t.description.toLowerCase().includes("blocked"))
         );
 
@@ -88,6 +95,12 @@ export const getDaily = query({
             linearIdentifier: t.linearIdentifier,
           })),
           inProgress: inProgressTasks.map((t) => ({
+            id: t._id,
+            title: t.title,
+            priority: t.priority,
+            linearIdentifier: t.linearIdentifier,
+          })),
+          backlog: backlogTasks.map((t) => ({
             id: t._id,
             title: t.title,
             priority: t.priority,
@@ -161,10 +174,14 @@ export const getDailySummary = query({
       (t) => t.status === "in_progress"
     ).length;
 
-    // Blocked tasks (keyword-based detection)
+    // Backlog = status backlog or todo (do not count as blocked)
+    const tasksBacklog = allTasks.filter(
+      (t) => t.status === "backlog" || t.status === "todo"
+    ).length;
+
+    // Blocked = only keyword "blocked" in title/description
     const tasksBlocked = allTasks.filter(
       (t) =>
-        t.status === "backlog" ||
         t.title.toLowerCase().includes("blocked") ||
         t.description.toLowerCase().includes("blocked")
     ).length;
@@ -183,6 +200,7 @@ export const getDailySummary = query({
       totalActivities,
       tasksCompleted,
       tasksInProgress,
+      tasksBacklog,
       tasksBlocked,
       agentsActive: activeAgentIds.size,
       messagesSent,
