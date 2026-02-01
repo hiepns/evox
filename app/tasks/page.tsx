@@ -1,96 +1,68 @@
+"use client";
+
+import { useMemo } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { TaskBoard } from "@/components/task-board";
 
-// Mock tasks
-const mockTasks = [
-  {
-    id: "1",
-    title: "Setup Convex backend schema",
-    status: "done" as const,
-    priority: "high" as const,
-    assigneeId: "sam",
-    assigneeName: "Sam",
-    assigneeAvatar: "SM",
-    labels: ["backend", "infrastructure"],
-  },
-  {
-    id: "2",
-    title: "Build agent card component",
-    status: "done" as const,
-    priority: "medium" as const,
-    assigneeId: "leo",
-    assigneeName: "Leo",
-    assigneeAvatar: "LO",
-    labels: ["frontend", "ui"],
-  },
-  {
-    id: "3",
-    title: "Implement task board Kanban view",
-    status: "in_progress" as const,
-    priority: "high" as const,
-    assigneeId: "leo",
-    assigneeName: "Leo",
-    assigneeAvatar: "LO",
-    labels: ["frontend", "ui"],
-  },
-  {
-    id: "4",
-    title: "Design activity feed timeline",
-    status: "in_progress" as const,
-    priority: "medium" as const,
-    assigneeId: "leo",
-    assigneeName: "Leo",
-    assigneeAvatar: "LO",
-    labels: ["frontend", "design"],
-  },
-  {
-    id: "5",
-    title: "Add agent heartbeat tracking",
-    status: "todo" as const,
-    priority: "high" as const,
-    assigneeId: "backend",
-    assigneeName: "Backend",
-    assigneeAvatar: "BE",
-    labels: ["backend", "monitoring"],
-  },
-  {
-    id: "6",
-    title: "Create task assignment flow",
-    status: "todo" as const,
-    priority: "medium" as const,
-    assigneeAvatar: "SM",
-    labels: ["feature"],
-  },
-  {
-    id: "7",
-    title: "Implement real-time updates",
-    status: "backlog" as const,
-    priority: "high" as const,
-    labels: ["backend", "realtime"],
-  },
-  {
-    id: "8",
-    title: "Add task filtering and search",
-    status: "backlog" as const,
-    priority: "low" as const,
-    labels: ["frontend", "enhancement"],
-  },
-  {
-    id: "9",
-    title: "Setup user authentication",
-    status: "backlog" as const,
-    priority: "medium" as const,
-    labels: ["backend", "security"],
-  },
-];
+type TaskStatus = "backlog" | "todo" | "in_progress" | "done";
+type TaskPriority = "low" | "medium" | "high";
+
+/** Map Convex task status to TaskBoard column (review → in_progress) */
+function toBoardStatus(
+  status: "backlog" | "todo" | "in_progress" | "review" | "done"
+): TaskStatus {
+  return status === "review" ? "in_progress" : status;
+}
+
+/** Map Convex priority to TaskBoard (urgent → high) */
+function toBoardPriority(
+  priority: "low" | "medium" | "high" | "urgent"
+): TaskPriority {
+  return priority === "urgent" ? "high" : priority;
+}
 
 export default function TasksPage() {
+  const projects = useQuery(api.projects.list);
+  const evoxProjectId = useMemo(
+    () => projects?.find((p) => p.name === "EVOX")?._id,
+    [projects]
+  );
+  const rawTasks = useQuery(
+    api.tasks.list,
+    evoxProjectId ? { projectId: evoxProjectId } : "skip"
+  );
+  const agents = useQuery(api.agents.list);
+
+  const tasks = useMemo(() => {
+    if (!rawTasks || !agents) return [];
+    const agentMap = new Map(agents.map((a) => [a._id, a]));
+    return rawTasks.map((t) => {
+      const assignee = t.assignee ? agentMap.get(t.assignee) : undefined;
+      return {
+        id: t._id,
+        _id: t._id as Id<"tasks">,
+        title: t.title,
+        status: toBoardStatus(t.status),
+        priority: toBoardPriority(t.priority),
+        assigneeId: t.assignee,
+        assigneeName: assignee?.name,
+        assigneeAvatar: assignee?.avatar,
+        labels: t.linearIdentifier ? [t.linearIdentifier] : [],
+      };
+    });
+  }, [rawTasks, agents]);
+
   return (
     <div className="h-full bg-black p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-zinc-50">Tasks</h1>
-        <p className="text-sm text-zinc-500">Track and manage team tasks</p>
+        <p className="text-sm text-zinc-500">
+          Track and manage team tasks (synced from Linear — use Sync Now on Standup to refresh)
+        </p>
       </div>
-      <TaskBoard tasks={mockTasks} />
+      <TaskBoard tasks={tasks} />
     </div>
   );
 }

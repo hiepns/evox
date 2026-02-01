@@ -1,59 +1,35 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAction } from "convex/react";
+import { useState, useEffect, useMemo } from "react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ChevronLeft, ChevronRight, RefreshCw, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StandupSummary } from "@/components/standup-summary";
 import { StandupAgentCard } from "@/components/standup-agent-card";
 
-// Mock data
-const mockStandupData = {
-  sam: {
-    name: "Sam",
-    avatar: "SM",
-    color: "green" as const,
-    done: [
-      { id: "agt-74", title: "Convex HTTP endpoint for agent heartbeat", identifier: "AGT-74" },
-      { id: "agt-75", title: "CLI heartbeat script", identifier: "AGT-75" },
-    ],
-    wip: [
-      { id: "agt-80", title: "Planning Phase 2 features", identifier: "AGT-80" },
-    ],
-    blocked: [],
-  },
-  leo: {
-    name: "Leo",
-    avatar: "LO",
-    color: "purple" as const,
-    done: [
-      { id: "agt-66", title: "Dashboard layout + sidebar nav", identifier: "AGT-66" },
-      { id: "agt-67", title: "Agent Cards component", identifier: "AGT-67" },
-      { id: "agt-68", title: "Task Board (Kanban)", identifier: "AGT-68" },
-      { id: "agt-69", title: "Activity Feed", identifier: "AGT-69" },
-    ],
-    wip: [
-      { id: "agt-70", title: "Task Detail Page", identifier: "AGT-70" },
-      { id: "agt-71", title: "Message Thread", identifier: "AGT-71" },
-    ],
-    blocked: [],
-  },
-  max: {
-    name: "Max",
-    avatar: "MX",
-    color: "blue" as const,
-    done: [],
-    wip: [
-      { id: "agt-82", title: "Reviewing architecture decisions", identifier: "AGT-82" },
-    ],
-    blocked: [],
-  },
+/** Map agent role to StandupAgentCard color */
+const roleToColor = {
+  backend: "green" as const,
+  frontend: "purple" as const,
+  pm: "blue" as const,
 };
+
+/** Format date as YYYY-MM-DD for Convex standup query (local date) */
+function toQueryDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export default function StandupPage() {
   const [date, setDate] = useState(new Date());
   const [syncState, setSyncState] = useState<"idle" | "syncing" | "success">("idle");
+  const queryDate = useMemo(() => toQueryDate(date), [date]);
+
+  const standupData = useQuery(api.standup.getDaily, { date: queryDate });
+  const standupSummary = useQuery(api.standup.getDailySummary, { date: queryDate });
   const triggerSync = useAction(api.linearSync.triggerSync);
 
   const formatDate = (d: Date) => {
@@ -111,11 +87,32 @@ export default function StandupPage() {
     }
   }, [syncState]);
 
-  // Calculate totals
-  const agents = Object.values(mockStandupData);
-  const totalDone = agents.reduce((sum, agent) => sum + agent.done.length, 0);
-  const totalWip = agents.reduce((sum, agent) => sum + agent.wip.length, 0);
-  const totalBlocked = agents.reduce((sum, agent) => sum + agent.blocked.length, 0);
+  // Map Convex standup data to StandupAgentCard props
+  const agentCards = useMemo(() => {
+    if (!standupData?.agents) return [];
+    return standupData.agents.map((report) => {
+      const color = roleToColor[report.agent.role] ?? "blue";
+      const toTask = (t: { id: string; title: string; linearIdentifier?: string }) => ({
+        id: t.id,
+        title: t.title,
+        identifier: t.linearIdentifier ?? t.id,
+      });
+      return {
+        name: report.agent.name,
+        avatar: report.agent.avatar,
+        color,
+        done: report.completed.map(toTask),
+        wip: report.inProgress.map(toTask),
+        blocked: report.blocked.map(toTask),
+      };
+    });
+  }, [standupData]);
+
+  const totalDone = standupSummary?.tasksCompleted ?? 0;
+  const totalWip = standupSummary?.tasksInProgress ?? 0;
+  const totalBlocked = standupSummary?.tasksBlocked ?? 0;
+
+  const isLoading = standupData === undefined || standupSummary === undefined;
 
   return (
     <div className="h-full overflow-y-auto bg-black p-8">
@@ -186,12 +183,34 @@ export default function StandupPage() {
           blockedCount={totalBlocked}
         />
 
-        {/* Agent Cards Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <StandupAgentCard {...mockStandupData.sam} />
-          <StandupAgentCard {...mockStandupData.leo} />
-          <StandupAgentCard {...mockStandupData.max} />
-        </div>
+        {/* Agent Cards Grid - live data from Convex (synced from Linear) */}
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="animate-pulse rounded-lg border border-zinc-800 bg-zinc-900 p-4"
+              >
+                <div className="mb-4 h-10 w-24 rounded bg-zinc-700" />
+                <div className="space-y-3">
+                  <div className="h-4 rounded bg-zinc-700" />
+                  <div className="h-4 rounded bg-zinc-700" />
+                  <div className="h-4 w-3/4 rounded bg-zinc-700" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : agentCards.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {agentCards.map((card) => (
+              <StandupAgentCard key={card.name} {...card} />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-8 text-center text-zinc-500">
+            No agents or tasks for this date. Run seed and sync Linear, then try Sync Now.
+          </div>
+        )}
       </div>
     </div>
   );
