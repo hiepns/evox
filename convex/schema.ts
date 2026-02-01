@@ -178,6 +178,40 @@ export default defineSchema({
     .index("by_source", ["source"])
     .index("by_created_at", ["createdAt"]),
 
+  // Agent Skills (AGT-129: Skill System per ADR-005)
+  // Tracks agent capabilities, autonomy level, and skill progression
+  agentSkills: defineTable({
+    agentId: v.id("agents"),
+    // Autonomy level (1=Intern, 2=Specialist, 3=Lead)
+    autonomyLevel: v.union(v.literal(1), v.literal(2), v.literal(3)),
+    // Skills with proficiency (0-100)
+    skills: v.array(v.object({
+      name: v.string(),           // e.g., "typescript", "react", "convex", "linear-api"
+      proficiency: v.number(),    // 0-100
+      verified: v.boolean(),      // Human-verified skill
+      lastUsed: v.optional(v.number()), // Timestamp
+    })),
+    // Territory (file patterns this agent can edit)
+    territory: v.array(v.string()), // e.g., ["convex/", "scripts/", "lib/evox/"]
+    // Permissions
+    permissions: v.object({
+      canPush: v.boolean(),           // Git push (usually requires approval)
+      canMerge: v.boolean(),          // Merge PRs
+      canDeploy: v.boolean(),         // Deploy to production
+      canEditSchema: v.boolean(),     // Database schema changes
+      canApproveOthers: v.boolean(),  // Approve other agents' PRs
+    }),
+    // Stats
+    tasksCompleted: v.number(),
+    tasksWithBugs: v.number(),       // For trust calculation
+    avgTaskDuration: v.optional(v.number()), // Minutes
+    lastPromotedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_agent", ["agentId"])
+    .index("by_autonomy_level", ["autonomyLevel"]),
+
   // Agent persistent memory (ADR-002: Hierarchical Memory Architecture)
   // AGT-107: SOUL.md per agent, AGT-109: WORKING.md per agent, AGT-110: Daily notes
   agentMemory: defineTable({

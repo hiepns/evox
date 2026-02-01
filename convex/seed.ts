@@ -8,6 +8,19 @@ export const seedDatabase = mutation({
     const existingProjects = await ctx.db.query("projects").collect();
 
     if (existingAgents.length > 0 && existingProjects.length > 0) {
+      // Ensure ADR-001 agent mappings exist (max, sam, leo) even when already seeded
+      const existingMappings = await ctx.db.query("agentMappings").collect();
+      if (existingMappings.length === 0) {
+        const son = existingAgents.find((a) => a.name === "SON" || a.role === "pm");
+        const sam = existingAgents.find((a) => a.name === "SAM" || a.role === "backend");
+        const leo = existingAgents.find((a) => a.name === "LEO" || a.role === "frontend");
+        const sonId = son?._id ?? existingAgents[0]._id;
+        const samId = sam?._id ?? existingAgents[0]._id;
+        const leoId = leo?._id ?? existingAgents[0]._id;
+        await ctx.db.insert("agentMappings", { name: "max", convexAgentId: sonId });
+        await ctx.db.insert("agentMappings", { name: "sam", convexAgentId: samId });
+        await ctx.db.insert("agentMappings", { name: "leo", convexAgentId: leoId });
+      }
       return { message: "Database already seeded", skipped: true };
     }
 
@@ -100,6 +113,26 @@ export const seedDatabase = mutation({
       sonId = son?._id ?? existingAgents[0]._id;
       samId = sam?._id ?? existingAgents[0]._id;
       leoId = leo?._id ?? existingAgents[0]._id;
+    }
+
+    // ADR-001: agent name → Convex/Linear mapping (max, sam, leo)
+    const existingMappings = await ctx.db.query("agentMappings").collect();
+    if (existingMappings.length === 0) {
+      await ctx.db.insert("agentMappings", {
+        name: "max",
+        convexAgentId: sonId,
+        linearUserId: undefined,
+      });
+      await ctx.db.insert("agentMappings", {
+        name: "sam",
+        convexAgentId: samId,
+        linearUserId: undefined,
+      });
+      await ctx.db.insert("agentMappings", {
+        name: "leo",
+        convexAgentId: leoId,
+        linearUserId: undefined,
+      });
     }
 
     // Only create sample tasks/messages if this is a full fresh seed
@@ -296,6 +329,122 @@ export const seedDatabase = mutation({
       agents: { sonId, samId, leoId },
       createdAgents: shouldCreateAgents,
       createdProjects: shouldCreateProjects,
+    };
+  },
+});
+
+/**
+ * Seed agent skills (AGT-129: Skill System)
+ * Run: npx convex run seed:seedSkills
+ */
+export const seedSkills = mutation({
+  handler: async (ctx) => {
+    const now = Date.now();
+
+    // Get existing agents
+    const agents = await ctx.db.query("agents").collect();
+    if (agents.length === 0) {
+      return { message: "No agents found. Run seedDatabase first.", skipped: true };
+    }
+
+    // Check if skills already seeded
+    const existingSkills = await ctx.db.query("agentSkills").collect();
+    if (existingSkills.length > 0) {
+      return { message: "Skills already seeded", skipped: true };
+    }
+
+    const son = agents.find((a) => a.name === "SON" || a.role === "pm");
+    const sam = agents.find((a) => a.name === "SAM" || a.role === "backend");
+    const leo = agents.find((a) => a.name === "LEO" || a.role === "frontend");
+
+    const results = [];
+
+    // SON/MAX (PM) - Level 3 Lead
+    if (son) {
+      await ctx.db.insert("agentSkills", {
+        agentId: son._id,
+        autonomyLevel: 3,
+        skills: [
+          { name: "project-management", proficiency: 95, verified: true, lastUsed: now },
+          { name: "linear", proficiency: 90, verified: true, lastUsed: now },
+          { name: "requirements", proficiency: 85, verified: true, lastUsed: now },
+          { name: "code-review", proficiency: 80, verified: true, lastUsed: now },
+        ],
+        territory: ["docs/", "CLAUDE.md", ".cursorrules", "DISPATCH.md"],
+        permissions: {
+          canPush: false,
+          canMerge: true,
+          canDeploy: false,
+          canEditSchema: true,
+          canApproveOthers: true,
+        },
+        tasksCompleted: 0,
+        tasksWithBugs: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      results.push({ agent: "SON/MAX", level: 3 });
+    }
+
+    // SAM (Backend) - Level 2 Specialist
+    if (sam) {
+      await ctx.db.insert("agentSkills", {
+        agentId: sam._id,
+        autonomyLevel: 2,
+        skills: [
+          { name: "typescript", proficiency: 90, verified: true, lastUsed: now },
+          { name: "convex", proficiency: 95, verified: true, lastUsed: now },
+          { name: "node.js", proficiency: 85, verified: true, lastUsed: now },
+          { name: "linear-api", proficiency: 80, verified: true, lastUsed: now },
+          { name: "webhooks", proficiency: 85, verified: true, lastUsed: now },
+        ],
+        territory: ["convex/", "scripts/", "lib/evox/"],
+        permissions: {
+          canPush: false,
+          canMerge: false,
+          canDeploy: false,
+          canEditSchema: false,
+          canApproveOthers: false,
+        },
+        tasksCompleted: 0,
+        tasksWithBugs: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      results.push({ agent: "SAM", level: 2 });
+    }
+
+    // LEO (Frontend) - Level 2 Specialist
+    if (leo) {
+      await ctx.db.insert("agentSkills", {
+        agentId: leo._id,
+        autonomyLevel: 2,
+        skills: [
+          { name: "react", proficiency: 90, verified: true, lastUsed: now },
+          { name: "next.js", proficiency: 85, verified: true, lastUsed: now },
+          { name: "tailwind", proficiency: 90, verified: true, lastUsed: now },
+          { name: "typescript", proficiency: 85, verified: true, lastUsed: now },
+          { name: "shadcn-ui", proficiency: 80, verified: true, lastUsed: now },
+        ],
+        territory: ["app/", "components/"],
+        permissions: {
+          canPush: false,
+          canMerge: false,
+          canDeploy: false,
+          canEditSchema: false,
+          canApproveOthers: false,
+        },
+        tasksCompleted: 0,
+        tasksWithBugs: 0,
+        createdAt: now,
+        updatedAt: now,
+      });
+      results.push({ agent: "LEO", level: 2 });
+    }
+
+    return {
+      message: "Agent skills seeded successfully",
+      seeded: results,
     };
   },
 });
