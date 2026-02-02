@@ -558,8 +558,33 @@ export const upsertByLinearId = mutation({
         const isDupe = isDupeStatusChange || isDupeCompleted;
 
         if (!isDupe) {
+          // AGT-179: For "completed" events, attribute to the task's owner (not sync caller)
+          // Priority: existingTask.agentName > taskAgentName arg > assignee lookup > fallback to sync caller
+          let completionAgentId = activityAgentId;
+          let completionAgentName = args.agentName.toLowerCase();
+
+          if (newStatus === "done") {
+            // Try to get the actual task owner
+            const taskOwnerName = existingTask.agentName ?? args.taskAgentName;
+            if (taskOwnerName) {
+              try {
+                completionAgentId = await resolveAgentIdByName(ctx.db, taskOwnerName);
+                completionAgentName = taskOwnerName.toLowerCase();
+              } catch {
+                // fallback to sync caller if agent not found
+              }
+            } else if (args.assignee) {
+              // Fallback to assignee if no agentName
+              const assigneeAgent = await ctx.db.get(args.assignee);
+              if (assigneeAgent) {
+                completionAgentId = args.assignee;
+                completionAgentName = assigneeAgent.name.toLowerCase();
+              }
+            }
+          }
+
           await ctx.db.insert("activities", {
-            agent: activityAgentId,
+            agent: newStatus === "done" ? completionAgentId : activityAgentId,
             action: "updated_task_status",
             target: existingTask._id,
             metadata: {
@@ -572,14 +597,17 @@ export const upsertByLinearId = mutation({
           });
           // AGT-137: New unified activityEvents schema
           // AGT-168: Use "completed" event type when status is done
+          // AGT-179: Use task owner for completion, sync caller for other status changes
           const eventType = newStatus === "done" ? "completed" : "status_change";
+          const eventAgentId = newStatus === "done" ? completionAgentId : activityAgentId;
+          const eventAgentName = newStatus === "done" ? completionAgentName : args.agentName.toLowerCase();
           const title = newStatus === "done"
-            ? `${args.agentName.toUpperCase()} completed ${args.linearIdentifier}`
+            ? `${completionAgentName.toUpperCase()} completed ${args.linearIdentifier}`
             : `${args.agentName.toUpperCase()} moved ${args.linearIdentifier} to ${newStatus}`;
 
           await ctx.db.insert("activityEvents", {
-            agentId: activityAgentId,
-            agentName: args.agentName.toLowerCase(),
+            agentId: eventAgentId,
+            agentName: eventAgentName,
             category: "task",
             eventType,
             title,

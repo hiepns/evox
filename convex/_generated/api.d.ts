@@ -24,6 +24,7 @@ import type * as http from "../http.js";
 import type * as linearSync from "../linearSync.js";
 import type * as mentions from "../mentions.js";
 import type * as messages from "../messages.js";
+import type * as messaging from "../messaging.js";
 import type * as notifications from "../notifications.js";
 import type * as projects from "../projects.js";
 import type * as seed from "../seed.js";
@@ -58,6 +59,7 @@ declare const fullApi: ApiFromModules<{
   linearSync: typeof linearSync;
   mentions: typeof mentions;
   messages: typeof messages;
+  messaging: typeof messaging;
   notifications: typeof notifications;
   projects: typeof projects;
   seed: typeof seed;

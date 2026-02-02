@@ -602,6 +602,86 @@ export const backfillFromCompletedTasks = mutation({
 });
 
 /**
+ * AGT-179: Fix wrong "completed" events attributed to "max" instead of actual task owner.
+ * Updates existing events where agentName="max" but task.agentName/assignee is different.
+ * Run: npx convex run activityEvents:fixWrongCompletionAttribution
+ */
+export const fixWrongCompletionAttribution = mutation({
+  handler: async (ctx) => {
+    // Get all "completed" events
+    const completedEvents = await ctx.db
+      .query("activityEvents")
+      .collect();
+
+    const completionEvents = completedEvents.filter(
+      (e) => e.eventType === "completed" && e.taskId
+    );
+
+    // Get all tasks and agents
+    const tasks = await ctx.db.query("tasks").collect();
+    const taskMap = new Map(tasks.map((t) => [t._id.toString(), t]));
+
+    const agents = await ctx.db.query("agents").collect();
+    const agentMap = new Map(agents.map((a) => [a._id.toString(), a]));
+    const agentByName = new Map(agents.map((a) => [a.name.toLowerCase(), a]));
+
+    let fixed = 0;
+    let skipped = 0;
+    const fixes: Array<{ linearId: string; from: string; to: string }> = [];
+
+    for (const event of completionEvents) {
+      const task = taskMap.get(event.taskId!.toString());
+      if (!task) {
+        skipped++;
+        continue;
+      }
+
+      // Determine correct agent: task.agentName > assignee
+      let correctAgent = task.agentName ? agentByName.get(task.agentName.toLowerCase()) : null;
+      if (!correctAgent && task.assignee) {
+        correctAgent = agentMap.get(task.assignee.toString());
+      }
+
+      if (!correctAgent) {
+        skipped++;
+        continue;
+      }
+
+      const correctAgentName = correctAgent.name.toLowerCase();
+
+      // Check if event is attributed to wrong agent
+      if (event.agentName !== correctAgentName) {
+        const displayName = correctAgent.name.toUpperCase();
+        const newTitle = `${displayName} completed ${task.linearIdentifier ?? task.title}`;
+
+        await ctx.db.patch(event._id, {
+          agentId: correctAgent._id,
+          agentName: correctAgentName,
+          title: newTitle,
+        });
+
+        fixes.push({
+          linearId: task.linearIdentifier ?? task._id.toString(),
+          from: event.agentName,
+          to: correctAgentName,
+        });
+        fixed++;
+      } else {
+        skipped++;
+      }
+    }
+
+    return {
+      message: `Fixed ${fixed} wrong completion attributions, skipped ${skipped}`,
+      fixed,
+      skipped,
+      total: completionEvents.length,
+      fixes,
+    };
+  },
+});
+
+/**
  * AGT-144: Delete all records from old activities table
  */
 export const deleteOldActivities = mutation({
