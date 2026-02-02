@@ -7,41 +7,47 @@ import { ActivityFeed } from "@/components/activity-feed";
 import { normalizeActivities } from "@/lib/activity-utils";
 import { cn } from "@/lib/utils";
 
-/** AGT-169: Full-page activity feed with filter [All] [Max] [Sam] [Leo] */
-const AGENT_FILTERS = ["all", "max", "sam", "leo"] as const;
-type AgentFilter = (typeof AGENT_FILTERS)[number];
+/** AGT-181 step 3: Activity feed with filter tabs: All, Completed, Created, Moved */
+const EVENT_FILTERS = ["all", "completed", "created", "moved"] as const;
+type EventFilter = (typeof EVENT_FILTERS)[number];
+
+const eventTypeMap: Record<string, string> = {
+  completed: "completed",
+  created: "created",
+  status_change: "moved",
+};
 
 export function ActivityPage() {
-  const [filter, setFilter] = useState<AgentFilter>("all");
+  const [filter, setFilter] = useState<EventFilter>("all");
 
   const raw = useQuery(api.activityEvents.list, { limit: 50 });
   const normalized = useMemo(() => normalizeActivities(raw ?? []), [raw]);
 
   const activities = useMemo(() => {
     if (filter === "all") return normalized;
-    return normalized.filter(
-      (a) => (a.agentName as string)?.toLowerCase() === filter
-    );
+    return normalized.filter((a) => {
+      const eventType = (a as { eventType?: string })?.eventType ?? "";
+      return eventTypeMap[filter] === eventType || eventTypeMap[filter] === eventTypeMap[eventType];
+    });
   }, [normalized, filter]);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-[#222] px-4 py-3">
-        <h2 className="text-sm font-semibold text-zinc-50">Activity</h2>
+      <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.08] px-4 py-3">
         <div className="flex gap-1">
-          {AGENT_FILTERS.map((f) => (
+          {EVENT_FILTERS.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => setFilter(f)}
               className={cn(
-                "rounded border px-2 py-1 text-[11px] font-medium uppercase tracking-wide",
+                "rounded border px-2 py-1 text-[11px] font-medium uppercase tracking-wide transition-colors",
                 filter === f
-                  ? "border-zinc-50 bg-[#222] text-zinc-50"
-                  : "border-[#222] text-zinc-500 hover:text-zinc-400"
+                  ? "border-white/20 bg-white/[0.05] text-white/90"
+                  : "border-white/[0.08] text-white/40 hover:border-white/[0.12] hover:text-white/60"
               )}
             >
-              {f === "all" ? "All" : f}
+              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
         </div>
