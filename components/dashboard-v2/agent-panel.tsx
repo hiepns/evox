@@ -1,10 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Github, Twitter } from "lucide-react";
+import { Github } from "lucide-react";
 import { AgentListItem } from "./agent-list-item";
 import { AgentSummary } from "./agent-summary";
 import { Id } from "@/convex/_generated/dataModel";
+
+/** AGT-157: X (formerly Twitter) logo — custom SVG */
+function XIcon({ size = 16, ...props }: React.SVGProps<SVGSVGElement> & { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="currentColor" {...props}>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
 
 interface Agent {
   _id: Id<"agents">;
@@ -66,7 +75,7 @@ export function AgentPanel({ agents, selectedAgentId, onSelectAgent, className =
             className="text-gray-500 hover:text-white transition-colors"
             aria-label="X"
           >
-            <Twitter className="h-5 w-5" />
+            <XIcon size={20} className="shrink-0" />
           </Link>
         </div>
       </div>
