@@ -10,6 +10,7 @@ import { useProject } from "@/components/project-context";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Mission Control", href: "/dashboard-v2", icon: LayoutDashboard },
   { name: "Standup", href: "/standup", icon: Calendar },
   { name: "Agents", href: "/agents", icon: Users },
   { name: "Operating Manual", href: "/registry", icon: BookOpen },
