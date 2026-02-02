@@ -58,15 +58,15 @@ export function AgentSidebar({ selectedAgentId, onAgentClick, className = "" }: 
       )}
     >
       <div className="flex shrink-0 items-center justify-center border-b border-white/[0.06] px-2 py-2.5 min-[1200px]:justify-between min-[1200px]:px-3">
-        <span className="text-[11px] font-medium uppercase tracking-widest text-white/40 hidden min-[1200px]:inline">
-          Agents
+        <span className="hidden min-[1200px]:inline text-[10px] tracking-[0.2em] uppercase text-white/30">
+          AGENTS
         </span>
         <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/60 hidden min-[1200px]:inline">
           {agents.length}
         </span>
         <span className="text-[11px] font-medium text-white/40 min-[1200px]:hidden">{agents.length}</span>
       </div>
-      <nav className="flex-1 overflow-y-auto p-1.5 min-[1200px]:p-2">
+      <nav className="flex-1 overflow-y-auto">
         {agents.map((a) => {
           const dot = statusDot[(a.status ?? "").toLowerCase()] ?? statusDot.offline;
           const label = a.currentTaskIdentifier ?? "Idle";
@@ -77,20 +77,21 @@ export function AgentSidebar({ selectedAgentId, onAgentClick, className = "" }: 
               type="button"
               onClick={() => onAgentClick(a._id)}
               className={cn(
-                "mb-1 flex w-full items-center rounded-md px-2 py-2 text-left transition-colors min-[1200px]:flex-col min-[1200px]:items-stretch",
-                "hover:bg-white/[0.04]",
-                isSelected && "border-l-2 border-amber-400 bg-white/[0.04] pl-1.5 min-[1200px]:pl-2"
+                "flex w-full items-start gap-2 px-3 py-3 text-left transition-colors duration-150 min-[1200px]:flex-col min-[1200px]:items-stretch min-[1200px]:gap-0",
+                "border-b border-white/[0.06]",
+                "hover:bg-white/[0.03]",
+                isSelected && "border-l-2 border-amber-400 bg-white/[0.05] pl-2 min-[1200px]:pl-3"
               )}
             >
-              <span className="text-lg leading-none shrink-0 min-[1200px]:text-base" aria-hidden>
+              <span className="text-lg leading-none shrink-0 min-[1200px]:text-lg" aria-hidden>
                 {a.avatar}
               </span>
-              <div className="ml-2 min-w-0 flex-1 min-[1200px]:ml-0 min-[1200px]:mt-0">
-                <div className="flex items-center justify-between gap-1 hidden min-[1200px]:flex">
+              <div className="min-w-0 flex-1 min-[1200px]:mt-1">
+                <div className="flex items-center gap-2 hidden min-[1200px]:flex min-[1200px]:flex-row">
                   <span className="truncate text-sm font-semibold text-white/90">{a.name}</span>
-                  <span className="shrink-0 text-[11px] text-white/40">{roleLabels[a.role] ?? a.role}</span>
+                  <span className="ml-auto shrink-0 text-xs text-white/40">{roleLabels[a.role] ?? a.role}</span>
                 </div>
-                <div className="mt-0.5 flex items-center gap-1.5 hidden min-[1200px]:flex">
+                <div className="mt-0.5 flex items-center gap-1.5 hidden min-[1200px]:flex min-[1200px]:pl-0">
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} aria-hidden />
                   <span className="font-mono text-xs text-white/40 truncate">{label}</span>
                 </div>
