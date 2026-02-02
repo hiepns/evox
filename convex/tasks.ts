@@ -564,23 +564,39 @@ export const upsertByLinearId = mutation({
           let completionAgentName = args.agentName.toLowerCase();
 
           if (newStatus === "done") {
-            // Try to get the actual task owner
-            const taskOwnerName = existingTask.agentName ?? args.taskAgentName;
-            if (taskOwnerName) {
+            // AGT-179: Use task owner for completion attribution
+            // Priority: task.agentName (if NOT "max") > assignee > sync caller
+            // IMPORTANT: Skip agentName="max" since that's the default from parseAgentFromDescription
+            // and doesn't represent actual task ownership
+
+            // First try: task's stored agentName (but only if it's NOT the default "max")
+            if (existingTask.agentName && existingTask.agentName.toLowerCase() !== "max") {
               try {
-                completionAgentId = await resolveAgentIdByName(ctx.db, taskOwnerName);
-                completionAgentName = taskOwnerName.toLowerCase();
+                completionAgentId = await resolveAgentIdByName(ctx.db, existingTask.agentName);
+                completionAgentName = existingTask.agentName.toLowerCase();
               } catch {
-                // fallback to sync caller if agent not found
+                // agent not found, continue to next fallback
               }
-            } else if (args.assignee) {
-              // Fallback to assignee if no agentName
+            }
+
+            // Second try: task's assignee (if first didn't work or was "max")
+            if (completionAgentName === args.agentName.toLowerCase() && existingTask.assignee) {
+              const assigneeAgent = await ctx.db.get(existingTask.assignee);
+              if (assigneeAgent) {
+                completionAgentId = existingTask.assignee;
+                completionAgentName = assigneeAgent.name.toLowerCase();
+              }
+            }
+
+            // Third try: args.assignee (in case existingTask.assignee is null but args has it)
+            if (completionAgentName === args.agentName.toLowerCase() && args.assignee) {
               const assigneeAgent = await ctx.db.get(args.assignee);
               if (assigneeAgent) {
                 completionAgentId = args.assignee;
                 completionAgentName = assigneeAgent.name.toLowerCase();
               }
             }
+            // If all fallbacks failed, we keep the sync caller (args.agentName = "max")
           }
 
           await ctx.db.insert("activities", {
@@ -692,60 +708,111 @@ export const upsertByLinearId = mutation({
 });
 
 /**
- * AGT-142: Backfill agentName from task description for existing tasks.
- * Parses dispatch patterns to determine which agent owns each task.
+ * AGT-179: Backfill agentName from task title/description for existing tasks.
+ * Uses smart heuristics to determine which agent owns each task.
  * Run: npx convex run tasks:backfillAgentName
+ *
+ * Heuristics:
+ * 1. [UI] prefix in title → Leo (frontend)
+ * 2. [Bug] prefix + UI-related keywords → Leo (frontend bug)
+ * 3. [Backend] or [API] prefix → Sam (backend)
+ * 4. Description dispatch patterns → explicit agent
+ * 5. Default: max (PM tasks, planning, etc.)
  */
 export const backfillAgentName = mutation({
   handler: async (ctx) => {
     const allTasks = await ctx.db.query("tasks").collect();
 
-    // Parse agent from description (same logic as linearSync)
-    function parseAgentFromDescription(description: string): string | undefined {
+    // Determine agent from title and description
+    function determineAgent(title: string, description: string): string {
+      const titleLower = title.toLowerCase();
       const descLower = description.toLowerCase();
 
-      // Pattern 1: "## Agent: Sam" or "Agent: Sam"
+      // Pattern 1: Explicit [UI] prefix → Leo
+      if (titleLower.startsWith("[ui]")) return "leo";
+
+      // Pattern 2: [Bug] with UI-related content → Leo
+      if (titleLower.startsWith("[bug]")) {
+        // Check if it's a frontend bug
+        const uiKeywords = ["activity", "sidebar", "panel", "layout", "feed", "modal", "drawer", "kanban", "card", "button", "css", "style", "component", "render", "ui"];
+        if (uiKeywords.some(k => titleLower.includes(k) || descLower.includes(k))) {
+          return "leo";
+        }
+        // Backend bug keywords
+        const backendKeywords = ["api", "database", "convex", "sync", "webhook", "mutation", "query", "schema", "linear"];
+        if (backendKeywords.some(k => titleLower.includes(k) || descLower.includes(k))) {
+          return "sam";
+        }
+      }
+
+      // Pattern 3: Explicit backend prefixes → Sam
+      if (titleLower.startsWith("[backend]") || titleLower.startsWith("[api]")) return "sam";
+
+      // Pattern 4: Description-based dispatch patterns
+      // "## Agent: Sam" or "Agent: Sam"
       const agentMatch = descLower.match(/##?\s*agent:\s*(sam|leo|max)/i);
       if (agentMatch) return agentMatch[1].toLowerCase();
 
-      // Pattern 2: "SAM's Steps" or "LEO's Steps" (agent-specific sections)
+      // "SAM's Steps" or "LEO's Steps"
       if (descLower.includes("sam's steps") || descLower.includes("sam (backend)")) return "sam";
       if (descLower.includes("leo's steps") || descLower.includes("leo (frontend)")) return "leo";
       if (descLower.includes("max's steps") || descLower.includes("max (pm)")) return "max";
 
-      // Pattern 3: Dispatch block with "Sam:" or "Leo:" at start of line
+      // Dispatch block "Sam:" or "Leo:" at start of line
       const dispatchMatch = description.match(/^(Sam|Leo|Max):/im);
       if (dispatchMatch) return dispatchMatch[1].toLowerCase();
 
-      // Pattern 4: Simple "## Dispatch\n...\nSam" or similar
+      // "## Dispatch\n...\nSam"
       if (descLower.includes("dispatch") && descLower.includes("sam")) return "sam";
       if (descLower.includes("dispatch") && descLower.includes("leo")) return "leo";
 
-      return undefined;
+      // Pattern 5: Title keywords as fallback
+      // Frontend keywords
+      const frontendKeywords = ["activity feed", "agent profile", "sidebar", "panel", "layout", "drawer", "modal", "kanban", "design", "polish", "overhaul"];
+      if (frontendKeywords.some(k => titleLower.includes(k))) return "leo";
+
+      // Backend keywords
+      const backendKeywordsTitle = ["sync", "webhook", "api", "schema", "memory", "attribution"];
+      if (backendKeywordsTitle.some(k => titleLower.includes(k))) return "sam";
+
+      // Default to max (PM)
+      return "max";
     }
 
     let updated = 0;
     let skipped = 0;
+    const changes: Array<{ linearId: string; from: string; to: string }> = [];
 
     for (const task of allTasks) {
-      // Skip if already has agentName
-      if (task.agentName) {
+      // Only update if agentName is "max" (the default) - to fix incorrect defaults
+      if (task.agentName && task.agentName.toLowerCase() !== "max") {
         skipped++;
         continue;
       }
 
-      const parsedAgent = parseAgentFromDescription(task.description);
-      const agentName = parsedAgent ?? "max"; // default to max (PM) if no dispatch found
+      const newAgentName = determineAgent(task.title, task.description);
 
-      await ctx.db.patch(task._id, { agentName });
-      updated++;
+      // Only update if it's different from current (or current is undefined/max)
+      const currentAgentName = task.agentName?.toLowerCase() || "max";
+      if (newAgentName !== currentAgentName) {
+        await ctx.db.patch(task._id, { agentName: newAgentName });
+        changes.push({
+          linearId: task.linearIdentifier || task._id.toString(),
+          from: currentAgentName,
+          to: newAgentName,
+        });
+        updated++;
+      } else {
+        skipped++;
+      }
     }
 
     return {
-      message: `Backfilled agentName for ${updated} tasks, skipped ${skipped} (already had agentName)`,
+      message: `Backfilled agentName for ${updated} tasks, skipped ${skipped}`,
       updated,
       skipped,
       total: allTasks.length,
+      changes,
     };
   },
 });

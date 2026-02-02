@@ -115,12 +115,14 @@ export const log = mutation({
 
 /**
  * AGT-168: Log task completion from GitHub webhook with correct attribution
- * Uses agentName from git author mapping, NOT from Linear API token owner.
- * Includes deduplication to prevent double-events when Linear webhook also fires.
+ * AGT-179: Uses task owner (agentName/assignee), NOT git author
+ *
+ * Since Son pushes commits for all agents, the git author is always "sonpiaz"→"max".
+ * We need to look at the task's actual owner to determine who completed it.
  */
 export const logGitTaskCompletion = internalMutation({
   args: {
-    agentName: v.string(), // from git author mapping (e.g., "sam")
+    agentName: v.string(), // from git author mapping (may be "max" if Son pushed)
     linearIdentifier: v.string(), // e.g., "AGT-168"
     commitHash: v.string(),
     commitMessage: v.string(),
@@ -133,31 +135,55 @@ export const logGitTaskCompletion = internalMutation({
       return { skipped: true, reason: "duplicate" };
     }
 
-    // Get agent by name
-    const agents = await ctx.db.query("agents").collect();
-    const agent = agents.find(
-      (a) => a.name.toLowerCase() === args.agentName.toLowerCase()
-    );
-
-    if (!agent) {
-      console.error(`Agent not found: ${args.agentName}`);
-      return { skipped: true, reason: "agent_not_found" };
-    }
-
-    // Find task by linearIdentifier
+    // Find task by linearIdentifier first
     const tasks = await ctx.db.query("tasks").collect();
     const task = tasks.find(
       (t) => t.linearIdentifier?.toUpperCase() === args.linearIdentifier.toUpperCase()
     );
 
-    const displayName = agent.name.toUpperCase();
+    // Get all agents for lookup
+    const agents = await ctx.db.query("agents").collect();
+    const agentByName = new Map(agents.map((a) => [a.name.toLowerCase(), a]));
+    const agentById = new Map(agents.map((a) => [a._id.toString(), a]));
+
+    // AGT-179: Determine the actual task owner
+    // Priority: task.agentName (if NOT "max") > task.assignee > git author
+    let actualAgentName = args.agentName.toLowerCase();
+    let actualAgent = agentByName.get(actualAgentName);
+
+    if (task) {
+      // First try: task.agentName (but NOT if it's "max" - that's the default)
+      if (task.agentName && task.agentName.toLowerCase() !== "max") {
+        const taskAgent = agentByName.get(task.agentName.toLowerCase());
+        if (taskAgent) {
+          actualAgent = taskAgent;
+          actualAgentName = task.agentName.toLowerCase();
+        }
+      }
+
+      // Second try: task.assignee
+      if (actualAgentName === "max" && task.assignee) {
+        const assigneeAgent = agentById.get(task.assignee.toString());
+        if (assigneeAgent) {
+          actualAgent = assigneeAgent;
+          actualAgentName = assigneeAgent.name.toLowerCase();
+        }
+      }
+    }
+
+    if (!actualAgent) {
+      console.error(`Agent not found: ${actualAgentName}`);
+      return { skipped: true, reason: "agent_not_found" };
+    }
+
+    const displayName = actualAgent.name.toUpperCase();
     const title = `${displayName} completed ${args.linearIdentifier}`;
     // AGT-179: Show task title in description for completed events
     const description = task?.title;
 
     const eventId = await ctx.db.insert("activityEvents", {
-      agentId: agent._id,
-      agentName: args.agentName.toLowerCase(),
+      agentId: actualAgent._id,
+      agentName: actualAgentName,
       category: "task",
       eventType: "completed",
       title,
@@ -168,12 +194,12 @@ export const logGitTaskCompletion = internalMutation({
       metadata: {
         toStatus: "done",
         commitHash: args.commitHash,
-        source: "github-webhook", // distinguish from linear-webhook
+        source: "github-webhook",
       },
       timestamp: Date.now(),
     });
 
-    console.log(`Logged completion for ${args.linearIdentifier} by ${args.agentName}`);
+    console.log(`Logged completion for ${args.linearIdentifier} by ${actualAgentName} (git author was ${args.agentName})`);
     return { skipped: false, eventId };
   },
 });
@@ -609,19 +635,18 @@ export const backfillFromCompletedTasks = mutation({
 
 /**
  * AGT-179: Fix wrong "completed" events attributed to "max" instead of actual task owner.
- * Updates existing events where agentName="max" but task.agentName/assignee is different.
+ *
+ * Strategy:
+ * 1. For each task with multiple "completed" events, find the one from github-webhook (correct attribution)
+ * 2. Use that attribution to fix all other "completed" events for the same task
+ * 3. For tasks with only "max" attribution and no github-webhook, check task.agentName/assignee
+ *
  * Run: npx convex run activityEvents:fixWrongCompletionAttribution
  */
 export const fixWrongCompletionAttribution = mutation({
   handler: async (ctx) => {
-    // Get all "completed" events
-    const completedEvents = await ctx.db
-      .query("activityEvents")
-      .collect();
-
-    const completionEvents = completedEvents.filter(
-      (e) => e.eventType === "completed" && e.taskId
-    );
+    // Get all events
+    const allEvents = await ctx.db.query("activityEvents").collect();
 
     // Get all tasks and agents
     const tasks = await ctx.db.query("tasks").collect();
@@ -631,56 +656,88 @@ export const fixWrongCompletionAttribution = mutation({
     const agentMap = new Map(agents.map((a) => [a._id.toString(), a]));
     const agentByName = new Map(agents.map((a) => [a.name.toLowerCase(), a]));
 
+    // Group completed events by linearIdentifier
+    const completedByTicket = new Map<string, typeof allEvents>();
+    for (const event of allEvents) {
+      if (event.eventType === "completed" && event.linearIdentifier) {
+        const existing = completedByTicket.get(event.linearIdentifier) || [];
+        existing.push(event);
+        completedByTicket.set(event.linearIdentifier, existing);
+      }
+    }
+
     let fixed = 0;
     let skipped = 0;
     const fixes: Array<{ linearId: string; from: string; to: string }> = [];
 
-    for (const event of completionEvents) {
-      const task = taskMap.get(event.taskId!.toString());
-      if (!task) {
-        skipped++;
-        continue;
-      }
+    for (const [linearId, events] of completedByTicket) {
+      // Find the authoritative source: github-webhook event (if any)
+      const githubEvent = events.find((e) => e.metadata?.source === "github-webhook");
 
-      // Determine correct agent: task.agentName > assignee
-      let correctAgent = task.agentName ? agentByName.get(task.agentName.toLowerCase()) : null;
-      if (!correctAgent && task.assignee) {
-        correctAgent = agentMap.get(task.assignee.toString());
-      }
+      // Find events attributed to "max" that need fixing
+      const maxEvents = events.filter((e) => e.agentName === "max" && e.metadata?.source !== "github-webhook");
 
-      if (!correctAgent) {
-        skipped++;
-        continue;
-      }
+      // Determine correct agent
+      let correctAgent = null;
+      let correctAgentName: string | null = null;
 
-      const correctAgentName = correctAgent.name.toLowerCase();
-
-      // Check if event is attributed to wrong agent OR missing description
-      const needsAttribFix = event.agentName !== correctAgentName;
-      const needsDescFix = !event.description && task.title;
-
-      if (needsAttribFix || needsDescFix) {
-        const displayName = correctAgent.name.toUpperCase();
-        const newTitle = `${displayName} completed ${task.linearIdentifier ?? task.title}`;
-
-        await ctx.db.patch(event._id, {
-          agentId: correctAgent._id,
-          agentName: correctAgentName,
-          title: newTitle,
-          // AGT-179: Add task title as description for completed events
-          description: task.title,
-        });
-
-        if (needsAttribFix) {
-          fixes.push({
-            linearId: task.linearIdentifier ?? task._id.toString(),
-            from: event.agentName,
-            to: correctAgentName,
-          });
-        }
-        fixed++;
+      if (githubEvent && githubEvent.agentName !== "max") {
+        // Use github-webhook attribution (most reliable)
+        correctAgent = agentByName.get(githubEvent.agentName.toLowerCase());
+        correctAgentName = githubEvent.agentName.toLowerCase();
       } else {
-        skipped++;
+        // Fall back to task data
+        const task = [...taskMap.values()].find((t) => t.linearIdentifier === linearId);
+        if (task) {
+          // First try: task.agentName (but NOT if it's "max")
+          if (task.agentName && task.agentName.toLowerCase() !== "max") {
+            correctAgent = agentByName.get(task.agentName.toLowerCase());
+            correctAgentName = task.agentName.toLowerCase();
+          }
+          // Second try: assignee
+          if (!correctAgent && task.assignee) {
+            correctAgent = agentMap.get(task.assignee.toString());
+            if (correctAgent) {
+              correctAgentName = correctAgent.name.toLowerCase();
+            }
+          }
+        }
+      }
+
+      if (!correctAgent || !correctAgentName || correctAgentName === "max") {
+        // Can't determine correct agent, skip all events for this ticket
+        skipped += events.length;
+        continue;
+      }
+
+      // Fix all events that are attributed to wrong agent or missing description
+      for (const event of events) {
+        const task = event.taskId ? taskMap.get(event.taskId.toString()) : null;
+        const needsAttribFix = event.agentName !== correctAgentName;
+        const needsDescFix = !event.description && task?.title;
+
+        if (needsAttribFix || needsDescFix) {
+          const displayName = correctAgent.name.toUpperCase();
+          const newTitle = `${displayName} completed ${linearId}`;
+
+          await ctx.db.patch(event._id, {
+            agentId: correctAgent._id,
+            agentName: correctAgentName,
+            title: newTitle,
+            description: task?.title || event.description,
+          });
+
+          if (needsAttribFix) {
+            fixes.push({
+              linearId,
+              from: event.agentName,
+              to: correctAgentName,
+            });
+          }
+          fixed++;
+        } else {
+          skipped++;
+        }
       }
     }
 
@@ -688,7 +745,7 @@ export const fixWrongCompletionAttribution = mutation({
       message: `Fixed ${fixed} wrong completion attributions, skipped ${skipped}`,
       fixed,
       skipped,
-      total: completionEvents.length,
+      total: allEvents.filter((e) => e.eventType === "completed").length,
       fixes,
     };
   },
