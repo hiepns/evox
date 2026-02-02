@@ -113,6 +113,45 @@ export const markAsRead = mutation({
   },
 });
 
+/** List all messages to or from an agent (for Agent Profile Messages tab). */
+export const listForAgent = query({
+  args: {
+    agentId: v.id("agents"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 50;
+    const [toMe, fromMe] = await Promise.all([
+      ctx.db
+        .query("agentMessages")
+        .withIndex("by_to_status", (q) => q.eq("to", args.agentId))
+        .collect(),
+      ctx.db
+        .query("agentMessages")
+        .withIndex("by_from_to", (q) => q.eq("from", args.agentId))
+        .collect(),
+    ]);
+    const merged = [...toMe, ...fromMe].sort((a, b) => b.timestamp - a.timestamp);
+    const limited = merged.slice(0, limit);
+    const withAgents = await Promise.all(
+      limited.map(async (m) => {
+        const from = await ctx.db.get(m.from);
+        const to = await ctx.db.get(m.to);
+        const task = m.taskRef ? await ctx.db.get(m.taskRef) : null;
+        return {
+          ...m,
+          fromAgent: from ? { name: from.name, avatar: from.avatar } : null,
+          toAgent: to ? { name: to.name, avatar: to.avatar } : null,
+          taskRefDisplay: task
+            ? { linearIdentifier: task.linearIdentifier, title: task.title }
+            : null,
+        };
+      })
+    );
+    return withAgents;
+  },
+});
+
 /** Get conversation between two agents (by canonical names), ordered by timestamp. */
 export const getConversation = query({
   args: {

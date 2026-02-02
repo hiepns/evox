@@ -5,7 +5,8 @@
  * Vercel deploy → Match commit → Linear comment / P0 bug ticket
  */
 import { v } from "convex/values";
-import { mutation, action, internalMutation } from "./_generated/server";
+import { mutation, action, internalAction, internalMutation } from "./_generated/server";
+import { api, internal } from "./_generated/api";
 
 // Regex to match ticket IDs like "AGT-123", "closes AGT-45", etc.
 const TICKET_REGEX = /\b(AGT-\d+)\b/gi;
@@ -22,9 +23,9 @@ const GITHUB_TO_AGENT: Record<string, string> = {
 };
 
 /**
- * Store webhook event in database
+ * Store webhook event in database (internal)
  */
-export const storeWebhookEvent = mutation({
+export const storeWebhookEvent = internalMutation({
   args: {
     source: v.union(v.literal("github"), v.literal("vercel")),
     eventType: v.string(),
@@ -45,9 +46,9 @@ export const storeWebhookEvent = mutation({
 });
 
 /**
- * Post a comment to Linear ticket
+ * Post a comment to Linear ticket (internal - called by other actions)
  */
-export const postLinearComment = action({
+export const postLinearComment = internalAction({
   args: {
     ticketId: v.string(), // e.g., "AGT-128"
     body: v.string(),
@@ -104,9 +105,9 @@ export const postLinearComment = action({
 });
 
 /**
- * Create a P0 bug ticket in Linear for deploy failures
+ * Create a P0 bug ticket in Linear for deploy failures (internal)
  */
-export const createLinearBugTicket = action({
+export const createLinearBugTicket = internalAction({
   args: {
     title: v.string(),
     description: v.string(),
@@ -220,26 +221,21 @@ export const processGitHubPush = action({
 **Link:** ${url}`;
 
         // Post comment to Linear
-        const result = (await ctx.runAction(
-          // @ts-ignore - internal action reference
-          { name: "webhooks:postLinearComment" },
-          { ticketId, body: commentBody }
-        )) as { success: boolean };
+        const result = await ctx.runAction(internal.webhooks.postLinearComment, {
+          ticketId,
+          body: commentBody,
+        });
 
         results.push({ ticketId, success: result.success });
 
         // Store webhook event
-        await ctx.runMutation(
-          // @ts-ignore - internal mutation reference
-          { name: "webhooks:storeWebhookEvent" },
-          {
-            source: "github" as const,
-            eventType: "push",
-            payload: JSON.stringify({ commit: hash, message: message.slice(0, 100) }),
-            linearTicketId: ticketId,
-            commentPosted: result.success,
-          }
-        );
+        await ctx.runMutation(internal.webhooks.storeWebhookEvent, {
+          source: "github" as const,
+          eventType: "push",
+          payload: JSON.stringify({ commit: hash, message: message.slice(0, 100) }),
+          linearTicketId: ticketId,
+          commentPosted: result.success,
+        });
       }
 
       // AGT-132: Track skill completion when "closes AGT-XX" detected
@@ -249,15 +245,11 @@ export const processGitHubPush = action({
         if (agentName) {
           // Record task completion for skill tracking
           try {
-            await ctx.runMutation(
-              // @ts-ignore - internal mutation reference
-              { name: "webhooks:recordSkillCompletion" },
-              {
-                agentName,
-                ticketId: closesMatches[0].replace(/closes\s+/i, "").toUpperCase(),
-                commitHash: hash,
-              }
-            );
+            await ctx.runMutation(internal.webhooks.recordSkillCompletion, {
+              agentName,
+              ticketId: closesMatches[0].replace(/closes\s+/i, "").toUpperCase(),
+              commitHash: hash,
+            });
           } catch (e) {
             console.error("Failed to record skill completion:", e);
           }
@@ -277,7 +269,13 @@ export const processVercelDeploy = action({
   args: {
     payload: v.any(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    processed: boolean;
+    status?: string;
+    results?: Array<{ ticketId: string; success: boolean }>;
+    bugTicketCreated?: boolean;
+    bugTicketId?: string;
+  }> => {
     const payload = args.payload;
     const deploymentType = payload.type || "deployment";
     const deployment = payload.deployment || payload;
@@ -317,36 +315,28 @@ export const processVercelDeploy = action({
 
     // Post comment to matched Linear tickets
     for (const ticketId of ticketIds) {
-      const result = (await ctx.runAction(
-        // @ts-ignore - internal action reference
-        { name: "webhooks:postLinearComment" },
-        { ticketId, body: commentBody }
-      )) as { success: boolean };
+      const result = await ctx.runAction(internal.webhooks.postLinearComment, {
+        ticketId,
+        body: commentBody,
+      });
 
       results.push({ ticketId, success: result.success });
     }
 
     // Store webhook event
-    await ctx.runMutation(
-      // @ts-ignore - internal mutation reference
-      { name: "webhooks:storeWebhookEvent" },
-      {
-        source: "vercel" as const,
-        eventType: deploymentType,
-        payload: JSON.stringify({ status, url, commit: hash }),
-        linearTicketId: ticketIds[0] || undefined,
-        commentPosted: results.some((r) => r.success),
-      }
-    );
+    await ctx.runMutation(internal.webhooks.storeWebhookEvent, {
+      source: "vercel" as const,
+      eventType: deploymentType,
+      payload: JSON.stringify({ status, url, commit: hash }),
+      linearTicketId: ticketIds[0] || undefined,
+      commentPosted: results.some((r) => r.success),
+    });
 
     // If deploy failed, create P0 bug ticket
     if (status === "ERROR" || status === "error" || status === "FAILED") {
-      const bugResult = (await ctx.runAction(
-        // @ts-ignore - internal action reference
-        { name: "webhooks:createLinearBugTicket" },
-        {
-          title: `🚨 [P0] Vercel Deploy Failed — ${hash}`,
-          description: `## Deploy Failure
+      const bugResult = await ctx.runAction(internal.webhooks.createLinearBugTicket, {
+        title: `🚨 [P0] Vercel Deploy Failed — ${hash}`,
+        description: `## Deploy Failure
 
 **Commit:** \`${commitSha}\`
 **Message:** ${commitMessage}
@@ -357,8 +347,7 @@ Check Vercel logs and fix immediately.
 
 ---
 *Auto-created by webhook on deploy failure*`,
-        }
-      )) as { success: boolean; ticketId?: string };
+      });
 
       return {
         processed: true,
@@ -395,7 +384,7 @@ export const listRecentEvents = mutation({
  * AGT-132: Record skill completion from webhook
  * Called when "closes AGT-XX" is detected in a commit message
  */
-export const recordSkillCompletion = mutation({
+export const recordSkillCompletion = internalMutation({
   args: {
     agentName: v.string(),
     ticketId: v.string(),

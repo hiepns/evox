@@ -89,6 +89,47 @@ export const listDailyNotes = query({
   },
 });
 
+// UPSERT working memory by agent name (for session wrap-up from caller)
+export const upsertWorkingByAgentName = mutation({
+  args: {
+    agentName: v.string(),
+    content: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const mapping = await ctx.db
+      .query("agentMappings")
+      .withIndex("by_name", (q) => q.eq("name", args.agentName.toLowerCase()))
+      .first();
+    if (!mapping) throw new Error(`Agent not found: ${args.agentName}`);
+    const agentId = mapping.convexAgentId;
+    const memories = await ctx.db
+      .query("agentMemory")
+      .withIndex("by_agent_type", (q) =>
+        q.eq("agentId", agentId).eq("type", "working")
+      )
+      .collect();
+    const existing = memories[0];
+    const now = Date.now();
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        content: args.content,
+        updatedAt: now,
+        version: existing.version + 1,
+      });
+      return { id: existing._id, created: false };
+    }
+    const id = await ctx.db.insert("agentMemory", {
+      agentId,
+      type: "working",
+      content: args.content,
+      createdAt: now,
+      updatedAt: now,
+      version: 1,
+    });
+    return { id, created: true };
+  },
+});
+
 // UPSERT - Update or create memory (with optimistic concurrency)
 export const upsertMemory = mutation({
   args: {

@@ -116,7 +116,7 @@ export const syncAll = internalAction({
 
       // Get all agents for matching assignees and finding system agent
       const agents = await ctx.runQuery(api.agents.list);
-      const systemAgent = agents.find((a) => a.role === "pm");
+      const systemAgent = agents.find((a: { role: string }) => a.role === "pm");
 
       if (!systemAgent) {
         throw new Error("No system agent (PM) found. Run seed first.");
@@ -124,7 +124,7 @@ export const syncAll = internalAction({
 
       // Get EVOX project
       const projects = await ctx.runQuery(api.projects.list);
-      const evoxProject = projects.find((p) => p.name === "EVOX");
+      const evoxProject = projects.find((p: { name: string }) => p.name === "EVOX");
 
       if (!evoxProject) {
         throw new Error("EVOX project not found. Run seed first.");
@@ -162,7 +162,7 @@ export const syncAll = internalAction({
           let assigneeId: Id<"agents"> | undefined = undefined;
           if (issue.assigneeName) {
             const matchedAgent = agents.find(
-              (a) => a.name.toLowerCase() === issue.assigneeName?.toLowerCase()
+              (a: { name: string; _id: Id<"agents"> }) => a.name.toLowerCase() === issue.assigneeName?.toLowerCase()
             );
             assigneeId = matchedAgent?._id;
           }
@@ -189,8 +189,8 @@ export const syncAll = internalAction({
         })
       );
 
-      const created = results.filter((r) => r.created).length;
-      const updated = results.filter((r) => !r.created).length;
+      const created = results.filter((r: { created: boolean }) => r.created).length;
+      const updated = results.filter((r: { created: boolean }) => !r.created).length;
 
       // AGT-133: Update agent lastSeen when sync runs (sync-runner = max)
       const maxMapping = await ctx.runQuery(api.agentMappings.getByAgentName, {

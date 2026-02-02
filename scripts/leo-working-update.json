@@ -1,0 +1,4 @@
+{
+  "agentName": "leo",
+  "content": "## Last Session\n- Tickets completed: AGT-152 (single dashboard), AGT-153 (redirects), AGT-154 (design refresh), AGT-157 (X logo), AGT-155 (Agent Profile v2)\n- Commits: 884fd57, f970470, 1caa4b0, e3cbf62, c578f55\n- Files changed: app/page.tsx, layout.tsx, next.config.ts, components/dashboard-v2/*\n\n## Current State\n- What's deployed: Unified dashboard at /, EVOX COMMAND CENTER, gray-800 design, Agent Profile v2 (SOUL, statusReason, statusSince, current task)\n- Known issues: None. Skills and Send message in profile are placeholders.\n\n## Next Session\n- Assigned: AGT-155 (Agent Profile v2)\n- Blocked by: nothing (AGT-156 done)\n- Design system doc to read first: https://linear.app/affitorai/document/evox-design-system-vercelnotion-minimal-0f9015cdcdd9"
+}

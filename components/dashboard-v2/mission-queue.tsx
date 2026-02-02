@@ -65,8 +65,9 @@ export function MissionQueue({
   const tasks: KanbanTask[] = useMemo(() => {
     if (!groupedTasks) return [];
 
-    const agentMap = new Map(
-      (agents ?? []).map((a) => [a._id, a])
+    type Agent = { _id: string; name: string };
+    const agentMap = new Map<string, Agent>(
+      (agents ?? []).map((a: Agent) => [a._id, a])
     );
 
     const allTasks = [
