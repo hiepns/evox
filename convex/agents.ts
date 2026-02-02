@@ -148,6 +148,17 @@ export const touchLastSeen = mutation({
   },
 });
 
+/** AGT-171: Update agent soul data */
+export const updateSoul = mutation({
+  args: {
+    id: v.id("agents"),
+    soul: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, { soul: args.soul });
+  },
+});
+
 // DELETE
 export const remove = mutation({
   args: { id: v.id("agents") },
