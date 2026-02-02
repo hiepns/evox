@@ -349,7 +349,6 @@ export const migrateFromActivities = mutation({
         projectId,
         metadata: {
           source: "migration",
-          ...(activity.metadata as object ?? {}),
         },
         timestamp: activity.createdAt,
       });
@@ -390,6 +389,100 @@ export const cleanup = mutation({
     return {
       deleted: toDelete.length,
       cutoffDate: new Date(cutoff).toISOString(),
+    };
+  },
+});
+
+/**
+ * AGT-144: Backfill events from completed tasks
+ * Creates "completed" events for all done tasks that don't have events yet
+ */
+export const backfillFromCompletedTasks = mutation({
+  handler: async (ctx) => {
+    const doneTasks = await ctx.db
+      .query("tasks")
+      .withIndex("by_status", (q) => q.eq("status", "done"))
+      .collect();
+
+    const agents = await ctx.db.query("agents").collect();
+    const agentMap = new Map(agents.map((a) => [a._id, a]));
+    const agentByName = new Map(agents.map((a) => [a.name.toLowerCase(), a]));
+
+    // Get existing events to avoid duplicates
+    const existingEvents = await ctx.db.query("activityEvents").collect();
+    const existingTaskIds = new Set(
+      existingEvents
+        .filter((e) => e.eventType === "completed" && e.taskId)
+        .map((e) => e.taskId?.toString())
+    );
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const task of doneTasks) {
+      // Skip if already has completed event
+      if (existingTaskIds.has(task._id.toString())) {
+        skipped++;
+        continue;
+      }
+
+      // Find agent: use agentName, then assignee, then createdBy
+      let agent = task.agentName ? agentByName.get(task.agentName.toLowerCase()) : null;
+      if (!agent && task.assignee) {
+        agent = agentMap.get(task.assignee);
+      }
+      if (!agent) {
+        agent = agentMap.get(task.createdBy);
+      }
+      if (!agent) {
+        skipped++;
+        continue;
+      }
+
+      const displayName = agent.name.toUpperCase();
+      const title = `${displayName} completed ${task.linearIdentifier ?? task.title}`;
+
+      await ctx.db.insert("activityEvents", {
+        agentId: agent._id,
+        agentName: agent.name.toLowerCase(),
+        category: "task",
+        eventType: "completed",
+        title,
+        taskId: task._id,
+        linearIdentifier: task.linearIdentifier,
+        projectId: task.projectId,
+        metadata: {
+          toStatus: "done",
+          source: "backfill",
+        },
+        timestamp: task.updatedAt,
+      });
+      created++;
+    }
+
+    return {
+      message: `Backfilled ${created} completed task events, skipped ${skipped}`,
+      created,
+      skipped,
+      totalDone: doneTasks.length,
+    };
+  },
+});
+
+/**
+ * AGT-144: Delete all records from old activities table
+ */
+export const deleteOldActivities = mutation({
+  handler: async (ctx) => {
+    const oldActivities = await ctx.db.query("activities").collect();
+
+    for (const activity of oldActivities) {
+      await ctx.db.delete(activity._id);
+    }
+
+    return {
+      deleted: oldActivities.length,
+      message: `Deleted ${oldActivities.length} old activity records`,
     };
   },
 });
