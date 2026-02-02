@@ -64,36 +64,36 @@ EVOX is the **COO of your AI engineering team**. It doesn't write code — it ma
 You define agents with roles, assign them tasks from Linear, and they work. You review, redirect, and make architecture decisions. EVOX handles the operations.
 
 ```
-┌─────────────────────────────────────────────────┐
-│                                                  │
-│   👤 SON — CEO                                   │
-│   Vision · Architecture · Final decisions        │
-│                                                  │
-│ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
-│                                                  │
-│   🧠 EVOX — COO                                  │
-│   Orchestration · Memory · Communication         │
-│                                                  │
-│   ┌─────────┐  ┌─────────┐  ┌─────────┐        │
-│   │   MAX   │  │   SAM   │  │   LEO   │        │
-│   │   PM    │  │ Backend │  │Frontend │        │
-│   └────┬────┘  └────┬────┘  └────┬────┘        │
-│        │            │            │               │
-│        └────────────┼────────────┘               │
-│                     │                            │
-│              ┌──────┴──────┐                     │
-│              │   CONVEX    │ ← Shared Brain      │
-│              │  Real-time  │                     │
-│              └──────┬──────┘                     │
-│                     │                            │
-│        ┌────────────┼────────────┐               │
-│        │            │            │               │
-│   ┌────┴────┐ ┌─────┴────┐ ┌────┴────┐         │
-│   │ Linear  │ │  GitHub  │ │  Slack  │         │
-│   │  Tasks  │ │ Commits  │ │ Alerts  │         │
-│   └─────────┘ └──────────┘ └─────────┘         │
-│                                                  │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   👤 SON — CEO                                              │
+│   Vision · Architecture · Final decisions                   │
+│                                                             │
+│ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
+│                                                             │
+│   🧠 EVOX — COO                                             │
+│   Orchestration · Memory · Communication                    │
+│                                                             │
+│   ┌───────┐  ┌───────┐  ┌───────┐  ┌───────┐              │
+│   │  MAX  │  │  SAM  │  │  LEO  │  │ ELLA  │              │
+│   │  PM   │  │Backend│  │Frontend│ │  QA   │              │
+│   └───┬───┘  └───┬───┘  └───┬───┘  └───┬───┘              │
+│       │          │          │          │                    │
+│       └──────────┴────┬─────┴──────────┘                    │
+│                       │                                     │
+│                ┌──────┴──────┐                              │
+│                │   CONVEX    │ ← Shared Brain               │
+│                │  Real-time  │                              │
+│                └──────┬──────┘                              │
+│                       │                                     │
+│          ┌────────────┼────────────┐                        │
+│          │            │            │                        │
+│     ┌────┴────┐ ┌─────┴────┐ ┌────┴────┐                   │
+│     │ Linear  │ │  GitHub  │ │  Slack  │                   │
+│     │  Tasks  │ │ Commits  │ │ Alerts  │                   │
+│     └─────────┘ └──────────┘ └─────────┘                   │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### The Agents
@@ -103,6 +103,7 @@ You define agents with roles, assign them tasks from Linear, and they work. You 
 | **MAX** | Product Manager | Breaks down features into tasks, manages priorities, reviews PRs |
 | **SAM** | Backend Engineer | API design, database schemas, server logic, Convex functions |
 | **LEO** | Frontend Engineer | React components, UI/UX implementation, responsive design |
+| **ELLA** | QA Engineer | Testing, bug detection, quality assurance |
 
 Each agent has:
 - **Identity** — who they are, what they're good at
@@ -166,7 +167,9 @@ The AI runtime landscape changes monthly. Locking into one runtime is a bet agai
 - **Multi-Project** — Switch between projects, filter by team
 - **Heartbeat System** — Agent health monitoring via CLI + API endpoint
 - **Task Assignment UI** — Assign tasks to specific agents from the dashboard
-- **Standup View** — Daily standup summary page
+- **Standup View** — Daily/Weekly/30-day standup summary with range selector
+- **Activity Events** — Unified event logging with deduplication
+- **Agent Skills** — Track agent capabilities and specializations
 
 ### Building 🔨
 - **Agent Memory System** — SOUL.md + WORKING.md + daily notes per agent
@@ -219,6 +222,7 @@ evox/
 ├── app/               # Next.js App Router pages
 ├── components/        # React components (dashboard, agents, tasks)
 ├── convex/            # Convex schema, functions, real-time queries
+├── docs/              # Playbooks, patterns, architecture decisions
 ├── hooks/             # Custom React hooks
 ├── lib/               # Utilities, Linear API, helpers
 └── public/            # Static assets
@@ -233,12 +237,19 @@ Built from first principles. Each phase solves a specific truth.
 | Phase | Focus | Solves | Status |
 |-------|-------|--------|--------|
 | **1–3** | Dashboard, Task Board, Linear Sync | Foundation | ✅ Done |
-| **4A** | Agent Identity & Memory | Truth 1, 2 | 🔨 Next |
-| **4B** | Agent Communication | Truth 3 | 📋 Planned |
-| **4C** | Heartbeat & Automation | Truth 4 | 📋 Planned |
+| **4A** | Agent Identity & Memory | Truth 1, 2 | ✅ Done |
+| **4B** | Agent Communication | Truth 3 | ✅ Done |
+| **4C** | Heartbeat & Automation | Truth 4 | ✅ Done |
 | **5** | Execution Engine | Truth 5 | 📋 Planned |
+| **6** | Standup Redesign & Activity Events | Operations | 🔨 In Progress |
 
 **End state:** A COO that never sleeps — your agents remember, communicate, wake up on schedule, execute tasks, and escalate when they're uncertain. You focus on vision and architecture.
+
+---
+
+## Stats
+
+Started Jan 31, 2026 · 9 sessions completed · 40+ tickets shipped
 
 ---
 
