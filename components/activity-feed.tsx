@@ -2,6 +2,7 @@
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
 
 // AGT-137: Unified activityEvents schema
 interface ActivityEvent {
@@ -36,6 +37,23 @@ const eventTypeToVerb: Record<string, string> = {
   sync_completed: "synced",
 };
 
+/** AGT-180: Color-coded action verbs */
+const verbColors: Record<string, string> = {
+  completed: "text-emerald-400",
+  created: "text-blue-400",
+  moved: "text-yellow-400",
+  assigned: "text-purple-400",
+};
+
+/** AGT-180: Agent avatar colors — MAX amber, SAM emerald, LEO blue */
+function getAgentAvatarColor(agentName: string): string {
+  const name = agentName.toLowerCase();
+  if (name === "max") return "bg-amber-500/20 border-amber-500/30";
+  if (name === "sam") return "bg-emerald-500/20 border-emerald-500/30";
+  if (name === "leo") return "bg-blue-500/20 border-blue-500/30";
+  return "bg-[#111] border-[#222]";
+}
+
 /** AGT-163: Spec 5.5 — 40px row, ticket ID + title, no raw Convex IDs */
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   const safe = Array.isArray(activities) ? activities : [];
@@ -60,20 +78,23 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
         const metadata = raw.metadata as { commitHash?: string } | undefined;
         const commitHash = typeof metadata?.commitHash === "string" ? metadata.commitHash : null;
 
+        const verbColor = verbColors[verb] ?? "text-white/50";
+        const avatarColor = getAgentAvatarColor(agentName);
+
         return (
           <li
             key={key}
-            className="flex min-h-[3.5rem] flex-col justify-center gap-0.5 border-b border-white/[0.04] py-2.5 px-3"
+            className="flex min-h-[3.5rem] flex-col justify-center gap-0.5 border-b border-white/[0.04] py-2.5 px-3 transition-colors hover:bg-white/[0.02]"
           >
             <div className="flex min-h-[1.25rem] items-center gap-2">
-              <Avatar className="h-5 w-5 shrink-0 border border-[#222]">
-                <AvatarFallback className="bg-[#111] text-[10px] text-zinc-400">{avatar}</AvatarFallback>
+              <Avatar className={cn("h-5 w-5 shrink-0 border", avatarColor)}>
+                <AvatarFallback className={cn("text-[10px] text-zinc-400", avatarColor)}>{avatar}</AvatarFallback>
               </Avatar>
               <span className="w-12 shrink-0 truncate text-xs font-medium text-white/80" title={agentName}>
                 {agentName}
               </span>
-              <span className="shrink-0 truncate text-xs text-white/50">{verb}</span>
-              <span className="min-w-0 shrink-0 font-mono text-xs text-white/50 whitespace-nowrap">{ticketId}</span>
+              <span className={cn("shrink-0 truncate text-xs", verbColor)}>{verb}</span>
+              <span className="min-w-0 shrink-0 font-mono text-xs text-white/70 whitespace-nowrap">{ticketId}</span>
               <span className="min-w-0 flex-1" aria-hidden />
               <span className="shrink-0 text-[10px] text-white/30 ml-auto">
                 {formatDistanceToNow(ts, { addSuffix: true })}
@@ -84,7 +105,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
                 {title}
               </span>
               {commitHash && (
-                <span className="shrink-0 font-mono text-[10px] text-amber-400/60" title="Commit">
+                <span className="shrink-0 font-mono text-[10px] text-amber-400/70" title="Commit">
                   {commitHash.slice(0, 7)}
                 </span>
               )}
