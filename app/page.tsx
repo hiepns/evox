@@ -7,22 +7,24 @@ import { Id } from "@/convex/_generated/dataModel";
 import { TopBar } from "@/components/dashboard-v2/top-bar";
 import { MissionQueue } from "@/components/dashboard-v2/mission-queue";
 import { SettingsModal } from "@/components/dashboard-v2/settings-modal";
-import { AgentsPage } from "@/components/dashboard-v2/agents-page";
 import { ActivityPage } from "@/components/dashboard-v2/activity-page";
-import type { KanbanTask } from "@/components/dashboard-v2/task-card";
+import { AgentStrip } from "@/components/dashboard-v2/agent-strip";
+import { AgentDetailSlidePanel } from "@/components/dashboard-v2/agent-detail-slide-panel";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 import { cn } from "@/lib/utils";
 
-/** AGT-169: Top nav [Mission Queue] [Agents] [Activity] — Vercel underline tabs */
-type MainTab = "queue" | "agents" | "activity";
+/** AGT-170: Top nav MISSION QUEUE | ACTIVITY only (Agents tab removed) */
+type MainTab = "queue" | "activity";
 
 export default function Home() {
   const [mainTab, setMainTab] = useState<MainTab>("queue");
   const [date, setDate] = useState(new Date());
   const [dateMode, setDateMode] = useState<DateFilterMode>("day");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
 
   const agents = useQuery(api.agents.list);
+  const stripAgents = useQuery(api.agents.listForStrip);
   const dashboardStats = useQuery(api.dashboard.getStats);
 
   const agentsList = useMemo(() => {
@@ -35,6 +37,13 @@ export default function Home() {
     [agentsList]
   );
 
+  const selectedAgent = useMemo(() => {
+    if (!selectedAgentId) return null;
+    const fromStrip = (stripAgents ?? []).find((a) => a._id === selectedAgentId);
+    const fromList = agentsList.find((a) => a._id === selectedAgentId);
+    return fromStrip ?? fromList ?? null;
+  }, [selectedAgentId, stripAgents, agentsList]);
+
   const taskCounts = dashboardStats?.taskCounts ?? { backlog: 0, todo: 0, inProgress: 0, review: 0, done: 0 };
   const inProgressCount = (taskCounts.inProgress ?? 0) + (taskCounts.review ?? 0);
   const doneCount = taskCounts.done ?? 0;
@@ -43,7 +52,6 @@ export default function Home() {
 
   const TABS: { id: MainTab; label: string }[] = [
     { id: "queue", label: "Mission Queue" },
-    { id: "agents", label: "Agents" },
     { id: "activity", label: "Activity" },
   ];
 
@@ -59,7 +67,6 @@ export default function Home() {
       />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      {/* AGT-169: Top nav — Vercel underline tabs */}
       <nav className="flex shrink-0 border-b border-[#222] px-4">
         {TABS.map((tab) => (
           <button
@@ -78,18 +85,31 @@ export default function Home() {
         ))}
       </nav>
 
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {mainTab === "queue" && (
-          <MissionQueue
-            date={date}
-            dateMode={dateMode}
-            onDateModeChange={setDateMode}
-            onDateChange={setDate}
-          />
+          <>
+            <AgentStrip onAgentClick={(id) => setSelectedAgentId(id)} />
+            <MissionQueue
+              date={date}
+              dateMode={dateMode}
+              onDateModeChange={setDateMode}
+              onDateChange={setDate}
+              onAssigneeClick={(id) => setSelectedAgentId(id as Id<"agents">)}
+            />
+          </>
         )}
-        {mainTab === "agents" && <AgentsPage agents={agentsList} />}
         {mainTab === "activity" && <ActivityPage />}
       </div>
+
+      <AgentDetailSlidePanel
+        open={!!selectedAgentId && !!selectedAgent}
+        agentId={selectedAgentId}
+        name={selectedAgent?.name ?? ""}
+        role={selectedAgent?.role ?? ""}
+        status={selectedAgent?.status ?? ""}
+        avatar={selectedAgent?.avatar ?? ""}
+        onClose={() => setSelectedAgentId(null)}
+      />
     </div>
   );
 }

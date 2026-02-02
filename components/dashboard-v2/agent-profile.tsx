@@ -53,7 +53,6 @@ export function AgentProfile({
   onClose,
 }: AgentProfileProps) {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [soulExpanded, setSoulExpanded] = useState(false);
   const [sendAsName, setSendAsName] = useState<string>("max");
   const [messageDraft, setMessageDraft] = useState("");
 
@@ -197,20 +196,9 @@ export function AgentProfile({
           <div className="space-y-4">
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">SOUL</h4>
-              <div
-                className={cn("mt-2 text-sm text-zinc-500 whitespace-pre-wrap", !soulExpanded && "line-clamp-3")}
-              >
+              <div className="mt-2 text-sm text-zinc-500 whitespace-pre-wrap">
                 {soulContent}
               </div>
-              {soulContent !== "—" && soulContent.length > 120 && (
-                <button
-                  type="button"
-                  onClick={() => setSoulExpanded(!soulExpanded)}
-                  className="mt-1 text-xs text-zinc-500 underline hover:text-zinc-400"
-                >
-                  {soulExpanded ? "Show less" : "Show more"}
-                </button>
-              )}
             </div>
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Skills</h4>

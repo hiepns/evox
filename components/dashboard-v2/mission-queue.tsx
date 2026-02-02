@@ -16,6 +16,7 @@ import { startOfDay, endOfDay, startOfWeek, endOfWeek, subDays } from "date-fns"
 
 interface MissionQueueProps {
   onTaskClick?: (task: KanbanTask) => void;
+  onAssigneeClick?: (agentId: string) => void;
   date: Date;
   dateMode: DateFilterMode;
   onDateModeChange: (mode: DateFilterMode) => void;
@@ -25,6 +26,7 @@ interface MissionQueueProps {
 
 export function MissionQueue({
   onTaskClick,
+  onAssigneeClick,
   date,
   dateMode,
   onDateModeChange,
@@ -85,6 +87,7 @@ export function MissionQueue({
         title: task.title,
         status: task.status,
         priority: task.priority,
+        assigneeId: task.assignee,
         assigneeAvatar: assignee?.name?.slice(0, 2).toUpperCase(),
         assigneeName: assignee?.name,
         linearIdentifier: task.linearIdentifier,
@@ -122,7 +125,7 @@ export function MissionQueue({
         />
       </div>
       <div className="flex-1 overflow-hidden">
-        <KanbanBoard tasks={tasks} onTaskClick={onTaskClick} />
+        <KanbanBoard tasks={tasks} onTaskClick={onTaskClick} onAssigneeClick={onAssigneeClick} />
       </div>
     </div>
   );

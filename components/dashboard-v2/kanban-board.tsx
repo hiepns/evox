@@ -19,10 +19,11 @@ const COLUMNS: { status: KanbanStatus; title: string }[] = [
 interface KanbanBoardProps {
   tasks: KanbanTask[];
   onTaskClick?: (task: KanbanTask) => void;
+  onAssigneeClick?: (agentId: string) => void;
   className?: string;
 }
 
-export function KanbanBoard({ tasks, onTaskClick, className = "" }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "" }: KanbanBoardProps) {
   const byStatus = (status: KanbanStatus) => tasks.filter((t) => t.status === status);
 
   return (
@@ -49,6 +50,7 @@ export function KanbanBoard({ tasks, onTaskClick, className = "" }: KanbanBoardP
                     key={task.id}
                     task={task}
                     onClick={() => onTaskClick?.(task)}
+                    onAssigneeClick={onAssigneeClick}
                   />
                 ))
               )}

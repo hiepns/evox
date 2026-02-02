@@ -39,6 +39,30 @@ export const get = query({
   },
 });
 
+/** AGT-170: List agents with currentTask linearIdentifier for Agent Strip */
+export const listForStrip = query({
+  handler: async (ctx) => {
+    const agents = await ctx.db.query("agents").collect();
+    return Promise.all(
+      agents.map(async (a) => {
+        let currentTaskIdentifier: string | null = null;
+        if (a.currentTask) {
+          const task = await ctx.db.get(a.currentTask);
+          currentTaskIdentifier = task?.linearIdentifier ?? null;
+        }
+        return {
+          _id: a._id,
+          name: a.name,
+          role: a.role,
+          status: a.status,
+          avatar: a.avatar,
+          currentTaskIdentifier,
+        };
+      })
+    );
+  },
+});
+
 // READ - Get agents by status
 export const getByStatus = query({
   args: {

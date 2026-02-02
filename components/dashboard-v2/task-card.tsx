@@ -19,6 +19,7 @@ export interface KanbanTask {
   title: string;
   status: KanbanStatus;
   priority: Priority;
+  assigneeId?: string;
   assigneeAvatar?: string;
   assigneeName?: string;
   linearIdentifier?: string;
@@ -31,11 +32,17 @@ export interface KanbanTask {
 interface TaskCardProps {
   task: KanbanTask;
   onClick?: () => void;
+  onAssigneeClick?: (agentId: string) => void;
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, onAssigneeClick }: TaskCardProps) {
   const priority = (task.priority ?? "low") as Priority;
   const barColor = priorityColors[priority] ?? priorityColors.low;
+
+  const handleAssigneeClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (task.assigneeId && onAssigneeClick) onAssigneeClick(task.assigneeId);
+  };
 
   return (
     <button
@@ -63,9 +70,19 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           )}
         </div>
         {task.assigneeAvatar && (
-          <Avatar className="h-6 w-6 shrink-0 border border-gray-700">
-            <AvatarFallback className="bg-gray-800 text-[10px] text-zinc-50">{task.assigneeAvatar}</AvatarFallback>
-          </Avatar>
+          <span
+            role={onAssigneeClick && task.assigneeId ? "button" : undefined}
+            onClick={onAssigneeClick && task.assigneeId ? handleAssigneeClick : undefined}
+            className={cn(
+              "shrink-0",
+              onAssigneeClick && task.assigneeId && "cursor-pointer rounded hover:ring-1 hover:ring-[#333]"
+            )}
+            title={onAssigneeClick && task.assigneeId ? `Open ${task.assigneeName ?? "agent"}` : undefined}
+          >
+            <Avatar className="h-6 w-6 border border-gray-700">
+              <AvatarFallback className="bg-gray-800 text-[10px] text-zinc-50">{task.assigneeAvatar}</AvatarFallback>
+            </Avatar>
+          </span>
         )}
       </div>
       {task.description && (
