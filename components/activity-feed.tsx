@@ -63,25 +63,32 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
         return (
           <li
             key={key}
-            className="flex h-10 items-center gap-2 border-b border-[#1a1a1a] px-2 text-sm"
+            className="flex min-h-[40px] flex-col justify-center gap-0.5 border-b border-white/[0.04] py-2 px-2 text-sm"
           >
-            <Avatar className="h-5 w-5 shrink-0 border border-[#222]">
-              <AvatarFallback className="bg-[#111] text-[10px] text-zinc-400">{avatar}</AvatarFallback>
-            </Avatar>
-            <span className="w-14 shrink-0 truncate text-zinc-50" title={agentName}>
-              {agentName}
-            </span>
-            <span className="shrink-0 text-zinc-500">{verb}</span>
-            <span className="font-mono text-xs text-[#888]">{ticketId}</span>
-            <span className="min-w-0 flex-1 truncate text-zinc-400" title={title}>
-              {title}
-            </span>
-            {commitHash && (
-              <span className="shrink-0 font-mono text-xs text-[#555]" title="Commit">{commitHash.slice(0, 7)}</span>
-            )}
-            <span className="shrink-0 text-xs text-[#555]">
-              {formatDistanceToNow(ts, { addSuffix: true })}
-            </span>
+            <div className="flex items-center gap-2">
+              <Avatar className="h-5 w-5 shrink-0 border border-[#222]">
+                <AvatarFallback className="bg-[#111] text-[10px] text-zinc-400">{avatar}</AvatarFallback>
+              </Avatar>
+              <span className="w-14 shrink-0 truncate text-zinc-50" title={agentName}>
+                {agentName}
+              </span>
+              <span className="shrink-0 text-zinc-500">{verb}</span>
+              <span className="font-mono text-xs text-[#888]">{ticketId}</span>
+              <span className="min-w-0 flex-1" aria-hidden />
+              <span className="shrink-0 text-right text-xs text-white/40">
+                {formatDistanceToNow(ts, { addSuffix: true })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 pl-7">
+              <span className="min-w-0 flex-1 truncate text-xs text-zinc-400" title={title}>
+                {title}
+              </span>
+              {commitHash && (
+                <span className="w-[7ch] shrink-0 font-mono text-xs text-white/40" title="Commit">
+                  {commitHash.slice(0, 7)}
+                </span>
+              )}
+            </div>
           </li>
         );
       })}
