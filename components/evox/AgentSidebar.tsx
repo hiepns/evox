@@ -1,0 +1,151 @@
+"use client";
+
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
+
+/** Status colors per ticket spec */
+const statusColors: Record<string, string> = {
+  idle: "#00cc88",
+  online: "#00cc88",
+  working: "#3b82f6",
+  busy: "#3b82f6",
+  offline: "#555555",
+};
+
+const roleLabels: Record<string, string> = {
+  pm: "PM",
+  backend: "Backend",
+  frontend: "Frontend",
+};
+
+/** Agent order: MAX → SAM → LEO */
+const AGENT_ORDER = ["max", "sam", "leo"];
+function sortAgents<T extends { name: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) => {
+    const i = AGENT_ORDER.indexOf(a.name.toLowerCase());
+    const j = AGENT_ORDER.indexOf(b.name.toLowerCase());
+    if (i === -1 && j === -1) return a.name.localeCompare(b.name);
+    if (i === -1) return 1;
+    if (j === -1) return -1;
+    return i - j;
+  });
+}
+
+interface AgentSidebarProps {
+  selectedAgentId: Id<"agents"> | null;
+  onAgentClick: (agentId: Id<"agents">) => void;
+  onAgentDoubleClick?: (agentId: Id<"agents">) => void;
+  className?: string;
+}
+
+type SidebarAgent = {
+  _id: Id<"agents">;
+  name: string;
+  role: string;
+  status: string;
+  avatar: string;
+  currentTaskIdentifier: string | null;
+};
+
+export function AgentSidebar({
+  selectedAgentId,
+  onAgentClick,
+  onAgentDoubleClick,
+  className = "",
+}: AgentSidebarProps) {
+  const listAgents = useQuery(api.agents.list);
+
+  const agents: SidebarAgent[] = sortAgents(
+    (Array.isArray(listAgents) ? listAgents : []).map((a) => ({
+      _id: a._id,
+      name: a.name,
+      role: a.role,
+      status: a.status,
+      avatar: a.avatar,
+      currentTaskIdentifier: (a as { currentTaskIdentifier?: string | null }).currentTaskIdentifier ?? null,
+    }))
+  );
+
+  if (!agents.length) return null;
+
+  const isWorking = (status: string) => {
+    const s = status.toLowerCase();
+    return s === "working" || s === "busy";
+  };
+
+  return (
+    <aside
+      className={cn(
+        "flex w-[220px] shrink-0 flex-col border-r border-[#222222] bg-[#111111]",
+        className
+      )}
+    >
+      <div className="flex shrink-0 items-center justify-between border-b border-[#222222] px-3 py-2">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-[#888888]">
+          Agents
+        </span>
+        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-[#888888]">
+          {agents.length}
+        </span>
+      </div>
+      <nav className="flex-1 overflow-y-auto">
+        {agents.map((agent) => {
+          const status = (agent.status ?? "offline").toLowerCase();
+          const dotColor = statusColors[status] ?? statusColors.offline;
+          const isSelected = selectedAgentId === agent._id;
+          const working = isWorking(status);
+
+          return (
+            <button
+              key={agent._id}
+              type="button"
+              onClick={() => onAgentClick(agent._id)}
+              onDoubleClick={() => onAgentDoubleClick?.(agent._id)}
+              className={cn(
+                "flex h-16 w-full cursor-pointer items-center gap-3 border-b border-[#222222] px-3 text-left transition-colors duration-150",
+                "hover:bg-[#1a1a1a]",
+                isSelected && "border-l-2 border-white bg-[#1a1a1a]"
+              )}
+            >
+              {/* Status dot */}
+              <div
+                className={cn("h-2.5 w-2.5 shrink-0 rounded-full", working && "agent-pulse")}
+                style={{ backgroundColor: dotColor }}
+                aria-hidden
+              />
+
+              {/* Avatar */}
+              <span className="shrink-0 text-2xl leading-none" aria-hidden>
+                {agent.avatar}
+              </span>
+
+              {/* Name + Role + Task */}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-medium text-[#fafafa]">
+                    {agent.name}
+                  </span>
+                  <span className="shrink-0 text-xs text-[#888888]">
+                    {roleLabels[agent.role] ?? agent.role}
+                  </span>
+                </div>
+                {working && agent.currentTaskIdentifier && (
+                  <div className="mt-0.5 truncate font-mono text-xs text-[#3b82f6]">
+                    {agent.currentTaskIdentifier}
+                  </div>
+                )}
+                {!working && (
+                  <div className="mt-0.5 text-xs text-[#555555]">
+                    {status === "idle" || status === "online" ? "Idle" : "Offline"}
+                  </div>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}

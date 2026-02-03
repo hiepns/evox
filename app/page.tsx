@@ -7,14 +7,31 @@ import { Id } from "@/convex/_generated/dataModel";
 import { NotificationTopBarWrapper } from "@/components/notification-topbar-wrapper";
 import { MissionQueue } from "@/components/dashboard-v2/mission-queue";
 import { SettingsModal } from "@/components/dashboard-v2/settings-modal";
-import { AgentSidebar } from "@/components/dashboard-v2/agent-sidebar";
+import { AgentSidebar } from "@/components/evox/AgentSidebar";
+import { ScratchPad } from "@/components/evox/ScratchPad";
+import { AgentSettingsModal } from "@/components/evox/AgentSettingsModal";
+import { ShortcutsHelpModal } from "@/components/evox/ShortcutsHelpModal";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { AgentProfileModal } from "@/components/dashboard-v2/agent-profile-modal";
 import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
-/** AGT-181: 2-panel layout — [Sidebar 180px] | [Kanban flex-1]. Agent Profile → Modal, Activity → Drawer */
+/** Agent order: MAX → SAM → LEO */
+const AGENT_ORDER = ["max", "sam", "leo"];
+function sortAgents<T extends { name: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) => {
+    const i = AGENT_ORDER.indexOf(a.name.toLowerCase());
+    const j = AGENT_ORDER.indexOf(b.name.toLowerCase());
+    if (i === -1 && j === -1) return a.name.localeCompare(b.name);
+    if (i === -1) return 1;
+    if (j === -1) return -1;
+    return i - j;
+  });
+}
+
+/** AGT-181: 2-panel layout — [Sidebar 220px] | [Kanban flex-1]. Agent Profile → Modal, Activity → Drawer */
 export default function Home() {
   const [date, setDate] = useState(new Date());
   const [dateMode, setDateMode] = useState<DateFilterMode>("day");
@@ -22,13 +39,16 @@ export default function Home() {
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
+  const [scratchPadOpen, setScratchPadOpen] = useState(false);
+  const [agentSettingsId, setAgentSettingsId] = useState<Id<"agents"> | null>(null);
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
 
   const agents = useQuery(api.agents.list);
   const dashboardStats = useQuery(api.dashboard.getStats);
 
   const agentsList = useMemo(() => {
     if (!Array.isArray(agents) || agents.length === 0) return [];
-    return agents as { _id: Id<"agents">; name: string; role: string; status: string; avatar: string; lastSeen?: number }[];
+    return sortAgents(agents as { _id: Id<"agents">; name: string; role: string; status: string; avatar: string; lastSeen?: number }[]);
   }, [agents]);
 
   const activeCount = useMemo(
@@ -41,12 +61,32 @@ export default function Home() {
     return agentsList.find((a) => a._id === selectedAgentId) ?? null;
   }, [selectedAgentId, agentsList]);
 
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    agents: agentsList,
+    onAgentSwitch: (agentId) => setSelectedAgentId(agentId),
+    onToggleScratchPad: () => setScratchPadOpen((prev) => !prev),
+    onToggleHelp: () => setShortcutsHelpOpen((prev) => !prev),
+    onCloseModals: () => {
+      setSelectedAgentId(null);
+      setSelectedTask(null);
+      setAgentSettingsId(null);
+      setShortcutsHelpOpen(false);
+      setSettingsOpen(false);
+      setActivityDrawerOpen(false);
+    },
+  });
+
   const handleAgentClick = (agentId: Id<"agents">) => {
     if (selectedAgentId === agentId) {
       setSelectedAgentId(null);
     } else {
       setSelectedAgentId(agentId);
     }
+  };
+
+  const handleAgentDoubleClick = (agentId: Id<"agents">) => {
+    setAgentSettingsId(agentId);
   };
 
   const handleTaskClick = (task: KanbanTask) => {
@@ -75,7 +115,15 @@ export default function Home() {
       <TaskDetailModal open={selectedTask !== null} task={selectedTask} onClose={() => setSelectedTask(null)} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <AgentSidebar selectedAgentId={selectedAgentId} onAgentClick={handleAgentClick} />
+        <div className="flex flex-col">
+          <AgentSidebar
+            selectedAgentId={selectedAgentId}
+            onAgentClick={handleAgentClick}
+            onAgentDoubleClick={handleAgentDoubleClick}
+            className="flex-1"
+          />
+          <ScratchPad isOpen={scratchPadOpen} onToggle={() => setScratchPadOpen((prev) => !prev)} />
+        </div>
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <MissionQueue
             date={date}
@@ -99,6 +147,17 @@ export default function Home() {
           onClose={() => setSelectedAgentId(null)}
         />
       )}
+
+      <AgentSettingsModal
+        open={agentSettingsId !== null}
+        agentId={agentSettingsId}
+        onClose={() => setAgentSettingsId(null)}
+      />
+
+      <ShortcutsHelpModal
+        open={shortcutsHelpOpen}
+        onClose={() => setShortcutsHelpOpen(false)}
+      />
     </div>
   );
 }

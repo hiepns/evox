@@ -1,0 +1,188 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+
+interface AgentSettingsModalProps {
+  open: boolean;
+  agentId: Id<"agents"> | null;
+  onClose: () => void;
+}
+
+const EMOJI_OPTIONS = ["🤖", "👨‍💻", "👩‍💻", "🧑‍💼", "🦾", "🧠", "⚡", "🎯", "🔧", "💡"];
+const STATUS_OPTIONS = ["online", "idle", "busy", "offline"];
+const MODEL_OPTIONS = ["claude", "codex"] as const;
+
+export function AgentSettingsModal({ open, agentId, onClose }: AgentSettingsModalProps) {
+  const agent = useQuery(api.agents.get, agentId ? { id: agentId } : "skip");
+  const updateAgent = useMutation(api.agents.update);
+
+  const [name, setName] = useState("");
+  const [avatar, setAvatar] = useState("🤖");
+  const [role, setRole] = useState<"pm" | "backend" | "frontend">("pm");
+  const [status, setStatus] = useState("idle");
+  const [model, setModel] = useState<"claude" | "codex">("claude");
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (agent) {
+      setName(agent.name);
+      setAvatar(agent.avatar);
+      setRole(agent.role as "pm" | "backend" | "frontend");
+      setStatus(agent.status);
+      setModel((agent as { preferredModel?: string }).preferredModel === "codex" ? "codex" : "claude");
+    }
+  }, [agent]);
+
+  if (!open || !agentId) return null;
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateAgent({
+        id: agentId,
+        name,
+        avatar,
+        role,
+      });
+      onClose();
+    } catch (e) {
+      console.error("Failed to save agent settings:", e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div
+        className="w-full max-w-md rounded-lg border border-[#222222] bg-[#111111] p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-[#fafafa]">Agent Settings</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-[#888888] hover:text-[#fafafa]"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Name */}
+          <div>
+            <label className="mb-1 block text-xs text-[#888888]">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded border border-[#222222] bg-[#0a0a0a] px-3 py-2 text-sm text-[#fafafa] focus:border-[#3b82f6] focus:outline-none"
+            />
+          </div>
+
+          {/* Avatar */}
+          <div>
+            <label className="mb-1 block text-xs text-[#888888]">Avatar</label>
+            <div className="flex flex-wrap gap-2">
+              {EMOJI_OPTIONS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => setAvatar(emoji)}
+                  className={`flex h-10 w-10 items-center justify-center rounded border text-xl transition-colors ${
+                    avatar === emoji
+                      ? "border-[#3b82f6] bg-[#3b82f6]/20"
+                      : "border-[#222222] hover:border-[#444444]"
+                  }`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Role */}
+          <div>
+            <label className="mb-1 block text-xs text-[#888888]">Role</label>
+            <div className="flex gap-2">
+              {(["pm", "backend", "frontend"] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setRole(r)}
+                  className={`flex-1 rounded border px-3 py-2 text-sm capitalize transition-colors ${
+                    role === r
+                      ? "border-[#3b82f6] bg-[#3b82f6]/20 text-[#fafafa]"
+                      : "border-[#222222] text-[#888888] hover:border-[#444444]"
+                  }`}
+                >
+                  {r === "pm" ? "PM" : r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Model */}
+          <div>
+            <label className="mb-1 block text-xs text-[#888888]">Model</label>
+            <div className="flex gap-2">
+              {MODEL_OPTIONS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setModel(m)}
+                  className={`flex-1 rounded border px-3 py-2 text-sm capitalize transition-colors ${
+                    model === m
+                      ? "border-[#3b82f6] bg-[#3b82f6]/20 text-[#fafafa]"
+                      : "border-[#222222] text-[#888888] hover:border-[#444444]"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="mb-1 block text-xs text-[#888888]">Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full rounded border border-[#222222] bg-[#0a0a0a] px-3 py-2 text-sm text-[#fafafa] focus:border-[#3b82f6] focus:outline-none"
+            >
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-[#222222] px-4 py-2 text-sm text-[#888888] hover:border-[#444444] hover:text-[#fafafa]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="rounded bg-[#3b82f6] px-4 py-2 text-sm text-white hover:bg-[#2563eb] disabled:opacity-50"
+          >
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
