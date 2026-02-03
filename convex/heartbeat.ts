@@ -28,9 +28,11 @@ export const updateHeartbeat = internalMutation({
     details: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // FIX: Agent names in DB are uppercase (MAX, SAM, LEO)
+    const normalizedName = args.agentName.toUpperCase();
     const agent = await ctx.db
       .query("agents")
-      .withIndex("by_name", (q) => q.eq("name", args.agentName))
+      .withIndex("by_name", (q) => q.eq("name", normalizedName))
       .first();
 
     if (!agent) {

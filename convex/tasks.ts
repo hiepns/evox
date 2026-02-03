@@ -576,7 +576,7 @@ export const upsertByLinearId = mutation({
         status: args.status,
         priority: args.priority,
         assignee: args.assignee,
-        updatedAt: args.updatedAt,
+        updatedAt: now, // Use current time, not Linear's old timestamp
         linearIdentifier: args.linearIdentifier,
         linearUrl: args.linearUrl,
         ...(args.taskAgentName != null && { agentName: args.taskAgentName }),
@@ -699,7 +699,7 @@ export const upsertByLinearId = mutation({
         assignee: args.assignee,
         createdBy: activityAgentId,
         createdAt: args.createdAt,
-        updatedAt: args.updatedAt,
+        updatedAt: now, // Use current time when syncing to our system
         linearId: args.linearId,
         linearIdentifier: args.linearIdentifier,
         linearUrl: args.linearUrl,
