@@ -24,42 +24,28 @@ export const getStats = query({
   handler: async (ctx) => {
     const now = Date.now();
 
-    // Get all agents
-    const agents = await ctx.db.query("agents").collect();
+    // Get agents (max 10 - we only have 3)
+    const agents = await ctx.db.query("agents").take(10);
     const agentsTotal = agents.length;
     const agentsActive = agents.filter(
       (a) => a.lastSeen > now - ACTIVE_THRESHOLD_MS
     ).length;
 
-    // Get all tasks and count by status
-    const tasks = await ctx.db.query("tasks").collect();
+    // Count tasks by status using index queries (no full table scan)
+    const [backlog, todo, inProgress, review, done] = await Promise.all([
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "backlog")).collect(),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "todo")).collect(),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "in_progress")).collect(),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "review")).collect(),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).take(100), // limit done to recent 100
+    ]);
     const taskCounts = {
-      backlog: 0,
-      todo: 0,
-      inProgress: 0,
-      review: 0,
-      done: 0,
+      backlog: backlog.length,
+      todo: todo.length,
+      inProgress: inProgress.length,
+      review: review.length,
+      done: done.length,
     };
-
-    for (const task of tasks) {
-      switch (task.status) {
-        case "backlog":
-          taskCounts.backlog++;
-          break;
-        case "todo":
-          taskCounts.todo++;
-          break;
-        case "in_progress":
-          taskCounts.inProgress++;
-          break;
-        case "review":
-          taskCounts.review++;
-          break;
-        case "done":
-          taskCounts.done++;
-          break;
-      }
-    }
 
     // Get last sync time from settings or most recent sync event
     const syncSetting = await ctx.db

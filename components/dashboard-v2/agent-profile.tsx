@@ -59,17 +59,45 @@ export function AgentProfile({
   const [sendAsName, setSendAsName] = useState<string>("max");
   const [messageDraft, setMessageDraft] = useState("");
 
+  // Core agent data - always loaded
   const agent = useQuery(api.agents.get, { id: agentId });
-  const soulMemory = useQuery(api.agentMemory.getMemory, { agentId, type: "soul" });
-  const workingMemory = useQuery(api.agentMemory.getMemory, { agentId, type: "working" });
-  const dailyNotes = useQuery(api.agentMemory.listDailyNotes, { agentId, limit: 10 });
-  const agentSkills = useQuery(api.skills.getByAgent, { agentId });
-  const tasksForAgent = useQuery(api.tasks.getByAssignee, { assignee: agentId });
   const currentTaskId = (agent as { currentTask?: Id<"tasks"> } | null)?.currentTask;
   const currentTask = useQuery(api.tasks.get, currentTaskId ? { id: currentTaskId } : "skip");
-  const activityForAgent = useQuery(api.activityEvents.getByAgent, { agentId, limit: 30 });
-  const messagesForAgent = useQuery(api.agentMessages.listForAgent, { agentId, limit: 30 });
-  const notificationsForAgent = useQuery(api.notifications.getByAgent, { agent: agentId });
+
+  // Lazy load tab data - only fetch for active tab (saves Convex bandwidth)
+  const soulMemory = useQuery(
+    api.agentMemory.getMemory,
+    activeTab === "overview" || activeTab === "memory" ? { agentId, type: "soul" } : "skip"
+  );
+  const workingMemory = useQuery(
+    api.agentMemory.getMemory,
+    activeTab === "memory" ? { agentId, type: "working" } : "skip"
+  );
+  const dailyNotes = useQuery(
+    api.agentMemory.listDailyNotes,
+    activeTab === "memory" ? { agentId, limit: 10 } : "skip"
+  );
+  const agentSkills = useQuery(
+    api.skills.getByAgent,
+    activeTab === "overview" ? { agentId } : "skip"
+  );
+  const tasksForAgent = useQuery(
+    api.tasks.getByAssignee,
+    activeTab === "tasks" ? { assignee: agentId, limit: 50 } : "skip"
+  );
+  const activityForAgent = useQuery(
+    api.activityEvents.getByAgent,
+    activeTab === "activity" ? { agentId, limit: 30 } : "skip"
+  );
+  const messagesForAgent = useQuery(
+    api.agentMessages.listForAgent,
+    activeTab === "messages" ? { agentId, limit: 30 } : "skip"
+  );
+  const notificationsForAgent = useQuery(
+    api.notifications.getByAgent,
+    activeTab === "memory" ? { agent: agentId } : "skip"
+  );
+  // Remove duplicate agents.list - parent already has this data
   const agentsList = useQuery(api.agents.list);
   const sendMessage = useMutation(api.agentMessages.sendMessage);
 

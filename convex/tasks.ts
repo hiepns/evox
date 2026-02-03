@@ -153,8 +153,9 @@ export const getByStatus = query({
 
 /**
  * AGT-150: Get tasks grouped by status for Kanban view
+ * - Uses indexed queries per status (no full table scan)
  * - DONE column filtered by date range (startTs/endTs)
- * - Other columns (backlog, todo, in_progress, review) show all tasks
+ * - Other columns limited to 100 each
  * @returns { backlog: Task[], todo: Task[], inProgress: Task[], review: Task[], done: Task[] }
  */
 export const getGroupedByStatus = query({
@@ -164,45 +165,50 @@ export const getGroupedByStatus = query({
     endTs: v.optional(v.number()),   // Unix timestamp for done filter end
   },
   handler: async (ctx, args) => {
-    // Get all tasks (optionally filtered by project)
-    let allTasks: Doc<"tasks">[];
-    if (args.projectId) {
-      allTasks = await ctx.db
-        .query("tasks")
-        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-        .order("desc")
-        .collect();
-    } else {
-      allTasks = await ctx.db.query("tasks").order("desc").collect();
-    }
+    // Query each status separately using index (much more efficient)
+    const [backlog, todo, inProgress, review, doneAll] = await Promise.all([
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "backlog")).order("desc").take(100),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "todo")).order("desc").take(100),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "in_progress")).order("desc").take(100),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "review")).order("desc").take(100),
+      ctx.db.query("tasks").withIndex("by_status", q => q.eq("status", "done")).order("desc").take(200),
+    ]);
 
-    // Group by status
-    const backlog = allTasks.filter((t) => t.status === "backlog");
-    const todo = allTasks.filter((t) => t.status === "todo");
-    const inProgress = allTasks.filter((t) => t.status === "in_progress");
-    const review = allTasks.filter((t) => t.status === "review");
-
-    // DONE column: filter by date range if provided
-    let done = allTasks.filter((t) => t.status === "done");
+    // Filter done by date range if provided
+    let done = doneAll;
     if (args.startTs !== undefined && args.endTs !== undefined) {
-      done = done.filter(
+      done = doneAll.filter(
         (t) => t.updatedAt >= args.startTs! && t.updatedAt <= args.endTs!
       );
+    }
+
+    // Filter by project if provided
+    if (args.projectId) {
+      return {
+        backlog: backlog.filter(t => t.projectId === args.projectId),
+        todo: todo.filter(t => t.projectId === args.projectId),
+        inProgress: inProgress.filter(t => t.projectId === args.projectId),
+        review: review.filter(t => t.projectId === args.projectId),
+        done: done.filter(t => t.projectId === args.projectId),
+      };
     }
 
     return { backlog, todo, inProgress, review, done };
   },
 });
 
-// READ - Get tasks by assignee
+// READ - Get tasks by assignee (limited to 50)
 export const getByAssignee = query({
-  args: { assignee: v.id("agents") },
+  args: {
+    assignee: v.id("agents"),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("tasks")
       .withIndex("by_assignee", (q) => q.eq("assignee", args.assignee))
       .order("desc")
-      .collect();
+      .take(args.limit ?? 50);
   },
 });
 
