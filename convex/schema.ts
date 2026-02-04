@@ -414,6 +414,22 @@ export default defineSchema({
     .index("by_task", ["taskId", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
 
+  // AGT-193: Cost Tracking — API token usage per agent per task
+  costLogs: defineTable({
+    agentName: v.string(),                    // "sam", "leo", "max"
+    taskId: v.optional(v.id("tasks")),        // Related task if any
+    linearIdentifier: v.optional(v.string()), // "AGT-193" for display
+    sessionId: v.optional(v.string()),        // Group costs by session
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    cost: v.number(),                         // USD cost
+    model: v.optional(v.string()),            // "claude-3-opus", "claude-3-sonnet", etc.
+    timestamp: v.number(),
+  })
+    .index("by_agent", ["agentName", "timestamp"])
+    .index("by_task", ["taskId", "timestamp"])
+    .index("by_timestamp", ["timestamp"]),
+
   // AGT-197: Execution Visibility - Execution Logs
   // Detailed logs from agent execution for debugging and audit
   executionLogs: defineTable({
