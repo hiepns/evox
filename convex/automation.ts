@@ -519,8 +519,8 @@ export const getEscalatedTasks = query({
  * Internal action wrapper for cron job
  * Calls runAutoDispatchCycle and logs results
  */
-export const runAutoDispatchCycleInternal = internalAction({
-  handler: async (ctx) => {
+export const runAutoDispatchCycleInternal: ReturnType<typeof internalAction> = internalAction({
+  handler: async (ctx): Promise<{ skipped: true; reason: string } | { cycleTime: number; results: unknown[] }> => {
     // Check if system is paused (kill switch)
     const systemState = await ctx.runQuery(api.system.getSystemState);
     if (systemState.paused) {

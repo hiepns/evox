@@ -65,4 +65,14 @@ crons.interval(
   {}
 );
 
+// AGT-216: Auto-Recovery — Self-Healing Agent Restart & Retry
+// Checks for crashed agents (heartbeat timeout) and auto-restarts with backoff
+// Circuit breaker stops after 3 consecutive failures
+crons.interval(
+  "auto-recovery-check",
+  { minutes: 5 },
+  internal.recovery.runRecoveryCheck,
+  {}
+);
+
 export default crons;

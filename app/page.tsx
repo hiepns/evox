@@ -22,6 +22,7 @@ import { ExecutionTerminal } from "@/components/evox/ExecutionTerminal";
 import { ActivityFeed } from "@/components/evox/ActivityFeed";
 import { SystemPausedBanner } from "@/components/evox/KillSwitch";
 import { HealthDashboard } from "@/components/evox/HealthDashboard";
+import { AutomationDashboard } from "@/components/evox/AutomationDashboard";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
@@ -190,6 +191,9 @@ export default function Home() {
             )}
             {activeViewTab === "health" && (
               <HealthDashboard className="h-full" />
+            )}
+            {activeViewTab === "automation" && (
+              <AutomationDashboard className="h-full" />
             )}
           </div>
         </main>

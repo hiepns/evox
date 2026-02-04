@@ -67,6 +67,15 @@ export function useKeyboardShortcuts({
     { enableOnFormTags: false }
   );
 
+  useHotkeys(
+    "meta+6",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("automation");
+    },
+    { enableOnFormTags: false }
+  );
+
   // Cmd+Shift+1/2/3 = switch to agent 1/2/3
   useHotkeys(
     "meta+shift+1",

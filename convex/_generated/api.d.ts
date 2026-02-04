@@ -35,6 +35,8 @@ import type * as messaging from "../messaging.js";
 import type * as notifications from "../notifications.js";
 import type * as projects from "../projects.js";
 import type * as rateLimit from "../rateLimit.js";
+import type * as recovery from "../recovery.js";
+import type * as scheduler from "../scheduler.js";
 import type * as scratchNotes from "../scratchNotes.js";
 import type * as seed from "../seed.js";
 import type * as settings from "../settings.js";
@@ -80,6 +82,8 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   projects: typeof projects;
   rateLimit: typeof rateLimit;
+  recovery: typeof recovery;
+  scheduler: typeof scheduler;
   scratchNotes: typeof scratchNotes;
   seed: typeof seed;
   settings: typeof settings;

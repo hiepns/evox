@@ -31,6 +31,12 @@ export default defineSchema({
     metadata: v.optional(v.object({
       preferredModel: v.optional(v.union(v.literal("claude"), v.literal("codex"))),
     })),
+    // AGT-216: Auto-Recovery fields
+    circuitBreakerTripped: v.optional(v.boolean()),   // True = agent stopped after too many failures
+    restartCount: v.optional(v.number()),             // Total restarts in recovery window
+    consecutiveFailures: v.optional(v.number()),      // Failures since last success (for circuit breaker)
+    recoveryBackoffLevel: v.optional(v.number()),     // 0=1min, 1=5min, 2=15min backoff
+    lastRestartAt: v.optional(v.number()),            // Timestamp of last auto-restart
   })
     .index("by_status", ["status"])
     .index("by_name", ["name"]),
@@ -584,4 +590,53 @@ export default defineSchema({
     .index("by_level", ["level", "timestamp"])
     .index("by_task", ["taskId", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
+
+  // AGT-214: Cron Scheduler — Dynamic scheduled tasks
+  // Allows scheduling recurring agent tasks (standup, reports, grooming)
+  schedules: defineTable({
+    // Schedule identity
+    name: v.string(),                           // "daily-standup", "weekly-report"
+    description: v.optional(v.string()),        // Human-readable description
+
+    // Task template to execute
+    taskTemplate: v.union(
+      v.literal("daily_standup"),               // Generate daily standup summary
+      v.literal("weekly_report"),               // Generate weekly progress report
+      v.literal("backlog_grooming"),            // Prioritize and clean backlog
+      v.literal("health_check"),                // Check agent health and uptime
+      v.literal("custom")                       // Custom task (uses customConfig)
+    ),
+
+    // Scheduling configuration
+    cronExpression: v.string(),                 // Cron format: "0 18 * * *" (6 PM daily)
+    timezone: v.optional(v.string()),           // IANA timezone: "America/Los_Angeles"
+
+    // Execution configuration
+    targetAgent: v.optional(v.string()),        // Which agent runs this: "max", "sam", "leo", or undefined = system
+    customConfig: v.optional(v.object({         // For custom templates
+      action: v.optional(v.string()),
+      payload: v.optional(v.string()),
+    })),
+
+    // State
+    enabled: v.boolean(),
+    lastRun: v.optional(v.number()),            // Timestamp of last execution
+    lastRunStatus: v.optional(v.union(
+      v.literal("success"),
+      v.literal("failed"),
+      v.literal("skipped")
+    )),
+    lastRunError: v.optional(v.string()),
+    nextRun: v.optional(v.number()),            // Scheduled next run timestamp
+    scheduledJobId: v.optional(v.string()),     // Convex scheduler job ID
+
+    // Metadata
+    createdBy: v.optional(v.string()),          // "son", "max", etc.
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_name", ["name"])
+    .index("by_enabled", ["enabled"])
+    .index("by_template", ["taskTemplate"])
+    .index("by_next_run", ["nextRun"]),
 });
