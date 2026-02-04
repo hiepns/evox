@@ -22,6 +22,7 @@ LINEAR_API="https://api.linear.app/graphql"
 LOCK_FILE="$PROJECT_DIR/.lock-$AGENT_LOWER"
 
 cd "$PROJECT_DIR"
+source .env.local 2>/dev/null || true
 
 # === Agent Role Mapping ===
 case "$AGENT_LOWER" in
@@ -171,8 +172,8 @@ START IMMEDIATELY. Zero questions. Ship it."
   echo ""
 
   # === 6. RUN CLAUDE WITH SELF-HEALING (AGT-251) ===
-  # Note: Headless mode requires API credits (not subscription)
-  # Add credits at: https://console.anthropic.com/settings/billing
+  # Uses ANTHROPIC_API_KEY from .env.local for headless operation
+  # Key configured for API credits (not subscription)
 
   MAX_RETRIES=3
   RETRY_COUNT=0

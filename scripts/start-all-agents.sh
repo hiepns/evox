@@ -1,8 +1,8 @@
 #!/bin/bash
-# start-all-agents.sh — Start agents with SUBSCRIPTION (not API credits)
-# Uses tmux to provide real TTY for each agent = subscription auth
+# start-all-agents.sh — Start agents with API key for headless operation
+# Uses tmux for process management and log capture
 #
-# Von Neumann insight: Subscription requires TTY. tmux provides TTY.
+# Supports both subscription auth (TTY) and API key auth (headless)
 
 set -e
 
@@ -10,7 +10,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 echo "╔════════════════════════════════════════════════╗"
-echo "║  EVOX — Automation Squad (tmux + subscription) ║"
+echo "║  EVOX — Automation Squad (API key auth)        ║"
 echo "╚════════════════════════════════════════════════╝"
 echo ""
 echo "North Star: 100% AUTOMATION"
@@ -48,6 +48,7 @@ tmux new-session -d -s evox -n sam -x 200 -y 50
 # Set environment in tmux
 tmux set-environment -t evox LINEAR_API_KEY "$LINEAR_API_KEY"
 tmux set-environment -t evox CONVEX_DEPLOYMENT "$CONVEX_DEPLOYMENT"
+tmux set-environment -t evox ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
 
 # Start SAM in first window - run directly in tmux (TTY preserved, tmux captures output)
 # Mac script syntax: script [-aq] file command...
@@ -74,7 +75,7 @@ sleep 2
 echo ""
 echo "╔════════════════════════════════════════════════╗"
 echo "║  4 agents running in tmux session 'evox'       ║"
-echo "║  Using SUBSCRIPTION credits (real TTY)         ║"
+echo "║  Using API key auth (headless ready)           ║"
 echo "╚════════════════════════════════════════════════╝"
 echo ""
 echo "Monitor agents:"

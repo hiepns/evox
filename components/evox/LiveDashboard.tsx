@@ -14,7 +14,7 @@ export function LiveDashboard() {
   const doneTasks = useQuery(api.tasks.getByStatus, { status: "done" });
 
   const activeAgents = agents?.filter(
-    (a) => a.status === "online" || a.status === "busy"
+    (a) => a.status?.toLowerCase() === "online" || a.status?.toLowerCase() === "busy"
   );
 
   const todayCompleted = doneTasks?.length ?? 0;

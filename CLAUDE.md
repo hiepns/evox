@@ -106,3 +106,4 @@ npx convex run agentActions:completeTask '{"agent":"sam","ticket":"AGT-XX","acti
 | [ADR-003](docs/decisions/ADR-003.md) | Shared communication via Convex |
 | [ADR-004](docs/decisions/ADR-004.md) | Scheduler-driven agent activation |
 | [ADR-005](docs/decisions/ADR-005.md) | Permission levels and human oversight |
+| [ADR-006](docs/decisions/ADR-006.md) | Headless agent authentication via tmux |
