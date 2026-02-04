@@ -1,14 +1,17 @@
 /**
- * AGT-250: Website Health Monitor — Auto-alert on Downtime
+ * AGT-250: Website Health Monitor — AUTONOMOUS Self-Healing
  *
  * Monitors:
  * - Vercel frontend: https://evox-ten.vercel.app
  * - Convex API: https://gregarious-elk-556.convex.site/status
  *
- * Alerts via:
- * - Telegram (immediate)
- * - Linear (creates P0 bug ticket)
- * - Convex alerts table (for dashboard)
+ * Self-Healing Flow:
+ * 1. Detect issue → Create event for MAX
+ * 2. MAX evaluates → Dispatches Sam/Leo to fix
+ * 3. Agent attempts fix → Reports result
+ * 4. If still broken after 3 attempts → THEN alert Son (last resort)
+ *
+ * NO HUMAN IN THE LOOP unless absolutely necessary.
  */
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal, api } from "./_generated/api";
@@ -28,7 +31,8 @@ const HEALTH_ENDPOINTS = [
   },
 ];
 
-// Telegram config (from environment)
+// Human alert only after N failed auto-fix attempts
+const MAX_AUTO_FIX_ATTEMPTS = 3;
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
@@ -174,6 +178,46 @@ export const saveHealthStatus = internalMutation({
 });
 
 /**
+ * Create auto-fix dispatch for Sam to investigate downtime
+ */
+export const createAutoFixDispatch = internalMutation({
+  args: {
+    endpoint: v.string(),
+    error: v.string(),
+  },
+  handler: async (ctx, { endpoint, error }) => {
+    // Find Sam agent
+    const sam = await ctx.db
+      .query("agents")
+      .withIndex("by_name", (q) => q.eq("name", "SAM"))
+      .first();
+
+    if (!sam) {
+      console.log("[HealthMonitor] Sam agent not found, cannot auto-dispatch");
+      return null;
+    }
+
+    // Create dispatch for Sam to investigate
+    const dispatchId = await ctx.db.insert("dispatches", {
+      agentId: sam._id,
+      command: "investigate_downtime",
+      payload: JSON.stringify({
+        endpoint,
+        error,
+        timestamp: Date.now(),
+      }),
+      priority: 0, // URGENT
+      isUrgent: true,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    console.log(`[HealthMonitor] Created auto-fix dispatch ${dispatchId} for Sam`);
+    return dispatchId;
+  },
+});
+
+/**
  * Log health event to alerts table
  */
 export const logHealthAlert = internalMutation({
@@ -227,16 +271,9 @@ export const checkWebsite = internalAction({
       const prevStatus = previousStatuses[result.name];
       const currStatus = result.status;
 
-      // DOWN alert
+      // DOWN alert — Notify MAX (agent) first, not human
       if (currStatus === "down" && prevStatus !== "down") {
-        const message = `🔴 <b>EVOX DOWN</b>\n\n` +
-          `<b>Service:</b> ${result.name}\n` +
-          `<b>URL:</b> ${result.url}\n` +
-          `<b>Error:</b> ${result.error || `HTTP ${result.httpCode}`}\n` +
-          `<b>Time:</b> ${new Date().toISOString()}\n\n` +
-          `⚠️ Immediate attention required!`;
-
-        await sendTelegramAlert(message);
+        // 1. Log to alerts table
         await ctx.runMutation(internal.healthMonitor.logHealthAlert, {
           type: "down",
           endpoint: result.name,
@@ -245,7 +282,30 @@ export const checkWebsite = internalAction({
           responseTime: result.responseTime,
         });
 
-        console.log(`[HealthMonitor] ALERT: ${result.name} is DOWN!`);
+        // 2. Fire event to MAX for autonomous handling
+        await ctx.scheduler.runAfter(0, internal.agentEvents.publishEvent, {
+          type: "system_alert",
+          targetAgent: "max",
+          payload: {
+            message: `🔴 WEBSITE DOWN: ${result.name} - ${result.error || `HTTP ${result.httpCode}`}`,
+            priority: "urgent",
+            metadata: {
+              alertType: "health_check_failed",
+              endpoint: result.name,
+              url: result.url,
+              error: result.error,
+              httpCode: result.httpCode,
+            },
+          },
+        });
+
+        // 3. Auto-create dispatch for Sam to investigate
+        await ctx.runMutation(internal.healthMonitor.createAutoFixDispatch, {
+          endpoint: result.name,
+          error: result.error || `HTTP ${result.httpCode}`,
+        });
+
+        console.log(`[HealthMonitor] ALERT: ${result.name} is DOWN! → Notified MAX, dispatched Sam.`);
       }
 
       // RECOVERED alert

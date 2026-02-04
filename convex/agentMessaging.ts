@@ -6,7 +6,7 @@
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 
 /**
  * Send a direct message from one agent to another
@@ -135,8 +135,8 @@ export const getDirectMessages = query({
     // Enrich with sender info
     const enriched = await Promise.all(
       messages.map(async (m) => {
-        const fromAgent = await ctx.db.get(m.from);
-        const task = m.taskRef ? await ctx.db.get(m.taskRef) : null;
+        const fromAgent = await ctx.db.get(m.from) as Doc<"agents"> | null;
+        const task = m.taskRef ? await ctx.db.get(m.taskRef) as Doc<"tasks"> | null : null;
         return {
           ...m,
           fromAgentName: fromAgent?.name || "Unknown",

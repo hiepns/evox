@@ -357,7 +357,7 @@ export function AgentProfile({
                 {executionSummary.recentErrors.length > 0 && (
                   <div className="rounded bg-red-500/10 border border-red-500/30 px-2 py-1.5">
                     <div className="text-[10px] uppercase tracking-wider text-red-400 mb-1">Recent Errors</div>
-                    {executionSummary.recentErrors.slice(0, 3).map((err: { message: string }, i: number) => (
+                    {executionSummary.recentErrors.slice(0, 3).map((err, i) => (
                       <div key={i} className="text-[11px] text-red-300 truncate">{err.message}</div>
                     ))}
                   </div>

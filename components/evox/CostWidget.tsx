@@ -50,7 +50,7 @@ export function CostWidget({ className, budget = 100 }: CostWidgetProps) {
   const stats = useMemo(() => {
     if (!costData) return null;
 
-    const agents = costData.agents.map((a) => ({
+    const agents = costData.agents.map((a: { agentName: string; totalCost: number }) => ({
       label: a.agentName.toUpperCase(),
       value: a.totalCost,
       color: agentColors[a.agentName.toLowerCase()] || "#666",

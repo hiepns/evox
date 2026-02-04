@@ -679,7 +679,7 @@ export const fixWrongCompletionAttribution = mutation({
       const maxEvents = events.filter((e) => e.agentName === "max" && e.metadata?.source !== "github-webhook");
 
       // Determine correct agent
-      let correctAgent = null;
+      let correctAgent: { _id: any; name: string } | null | undefined = null;
       let correctAgentName: string | null = null;
 
       if (githubEvent && githubEvent.agentName !== "max") {

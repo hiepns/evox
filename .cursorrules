@@ -27,75 +27,28 @@ I do NOT touch: `convex/`, `scripts/` (Sam's territory)
 
 
 === CURRENT STATE ===
-## Session wrap-up (AGT-155)
+# LEO — Working Memory
+Last updated: 2026-02-04 06:22 UTC
 
-**Ticket:** AGT-155 Agent Profile v2 — SOUL, skills, status reason, tabs, messaging
+## Current Task
+None
 
-**Done:**
-- Agent Profile v2 in `components/dashboard-v2/agent-profile.tsx` per spec 5.6: Identity (32px avatar, 20px/600 name, role), Status + Reason (8px dot, statusReason italic, Since), ABOUT (SOUL from agentMemory soul fallback agents.soul, 3-line expand), SKILLS (pills #111/#222, skills.getByAgent), Tabs Tasks | Activity | Messages (underline active), Send message (agentMessages.sendMessage, Send as dropdown).
-- Convex `agentMessages.listForAgent(agentId, limit?)` for Messages tab.
-- Webhooks: fixed processVercelDeploy circular ref for build (processVercelDeployAction + export).
+## Status
+Idle — Queue empty
 
-**Committed:** closes AGT-155 (253da69). Linear comment posted. Design system doc URL not fetchable; used ticket spec 5.6 and existing Detail Panel patterns.
+## Blockers
+None
 
-**Next:** Follow DISPATCH / next Leo ticket.
+## Next Steps
+1. Monitor for new Linear assignments
+2. Check @mentions from teammates
+3. Respond to dispatch when task arrives
 
 ## Recent Completions
+- [x] AGT-238: Elon Dashboard — First Principles Metrics (2026-02-04 06:22)
 - [x] AGT-217: Added Health Dashboard with uptime badges, success rate sparklines, error trend ... (2026-02-04 04:21)
 
-=== TASK ===
-Ticket: AGT-238
-Title: [LEO] Elon Dashboard — First Principles Metrics
-Priority: urgent
-Status: backlog
-
-Description:
-## Goal
-
-Dashboard that Elon Musk would approve. No vanity metrics. Only actionable data.
-
-## Key Metrics (Must Have)
-
-### 1\. Velocity
-
-* Tasks completed per hour
-* Trend arrow (up/down vs yesterday)
-* 7-day sparkline
-
-### 2\. Cost Efficiency
-
-* $/task average
-* Trend vs last week
-
-### 3\. Agent Utilization
-
-* % time active (not idle)
-* Per agent breakdown
-* Who is underutilized?
-
-### 4\. Bottlenecks
-
-* Top blocker right now
-* Tasks waiting count
-
-### 5\. ROI
-
-* Value generated estimate
-* Total cost
-* ROI multiplier
-
-## Design Principles
-
-* Numbers > text
-* Trends > snapshots
-* Actionable > informational
-* Glanceable in 3 seconds
-
-## Owner
-
-Leo (Frontend)
-
 === DISPATCH RULES ===
-- Commit with "closes AGT-238" when done
+- Commit with "closes None" when done
 - Push immediately after commit
 - Leave Linear comment: files changed, what was done

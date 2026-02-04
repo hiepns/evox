@@ -28,6 +28,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as dispatches from "../dispatches.js";
 import type * as documents from "../documents.js";
 import type * as execution from "../execution.js";
+import type * as healthMonitor from "../healthMonitor.js";
 import type * as heartbeat from "../heartbeat.js";
 import type * as http from "../http.js";
 import type * as learnings from "../learnings.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   dispatches: typeof dispatches;
   documents: typeof documents;
   execution: typeof execution;
+  healthMonitor: typeof healthMonitor;
   heartbeat: typeof heartbeat;
   http: typeof http;
   learnings: typeof learnings;

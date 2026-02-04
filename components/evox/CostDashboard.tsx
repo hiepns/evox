@@ -52,7 +52,7 @@ export function CostDashboard({
     if (!dailyCosts) return null;
 
     // Daily breakdown
-    const daily = dailyCosts.dailyBreakdown.map((d) => ({
+    const daily = dailyCosts.dailyBreakdown.map((d: { date: string; cost: number }) => ({
       label: format(new Date(d.date), "MMM d"),
       value: d.cost,
     }));
@@ -73,7 +73,7 @@ export function CostDashboard({
   // Agent comparison
   const agentComparison = useMemo(() => {
     if (!allAgentCosts) return [];
-    return allAgentCosts.agents.map((a) => ({
+    return allAgentCosts.agents.map((a: { agentName: string; totalCost: number }) => ({
       label: a.agentName.toUpperCase(),
       value: a.totalCost,
     }));
