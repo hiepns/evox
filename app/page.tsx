@@ -27,6 +27,7 @@ import { AutomationDashboard } from "@/components/evox/AutomationDashboard";
 import { DirectMessagesView } from "@/components/evox/DirectMessagesView";
 import { CommunicationLog } from "@/components/evox/CommunicationLog";
 import { ElonDashboard } from "@/components/evox/ElonDashboard";
+import { CEODashboard } from "@/components/evox/CEODashboard";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
@@ -179,6 +180,9 @@ export default function Home() {
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
           <ViewTabs activeTab={activeViewTab} onTabChange={setActiveViewTab} />
           <div className="flex-1 min-h-0 overflow-hidden">
+            {activeViewTab === "ceo" && (
+              <CEODashboard className="h-full" />
+            )}
             {activeViewTab === "kanban" && (
               <MissionQueue
                 date={date}

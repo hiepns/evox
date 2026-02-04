@@ -21,7 +21,16 @@ export function useKeyboardShortcuts({
   onCloseModals,
   onViewTabChange,
 }: UseKeyboardShortcutsProps) {
-  // AGT-206: Cmd+1/2/3/4 = switch view tabs
+  // AGT-206: Cmd+0/1/2/3/4/5/6/7/8/9 = switch view tabs
+  useHotkeys(
+    "meta+0",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("ceo");
+    },
+    { enableOnFormTags: false }
+  );
+
   useHotkeys(
     "meta+1",
     (e) => {
@@ -81,6 +90,24 @@ export function useKeyboardShortcuts({
     (e) => {
       e.preventDefault();
       onViewTabChange?.("messages");
+    },
+    { enableOnFormTags: false }
+  );
+
+  useHotkeys(
+    "meta+8",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("comms");
+    },
+    { enableOnFormTags: false }
+  );
+
+  useHotkeys(
+    "meta+9",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("metrics");
     },
     { enableOnFormTags: false }
   );

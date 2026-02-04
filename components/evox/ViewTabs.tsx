@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export type MainViewTab = "kanban" | "terminal" | "queue" | "activity" | "health" | "automation" | "messages" | "comms" | "metrics";
+export type MainViewTab = "ceo" | "kanban" | "terminal" | "queue" | "activity" | "health" | "automation" | "messages" | "comms" | "metrics";
 
 interface ViewTabsProps {
   activeTab: MainViewTab;
@@ -11,6 +11,7 @@ interface ViewTabsProps {
 }
 
 const tabs: { id: MainViewTab; label: string; shortcut: string }[] = [
+  { id: "ceo", label: "CEO", shortcut: "⌘0" },
   { id: "kanban", label: "Kanban", shortcut: "⌘1" },
   { id: "terminal", label: "Terminal", shortcut: "⌘2" },
   { id: "queue", label: "Queue", shortcut: "⌘3" },
