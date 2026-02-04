@@ -84,9 +84,10 @@ export default function Home() {
         endTs: endOfWeek(date, { weekStartsOn: 1 }).getTime(),
       };
     } else {
+      const now = new Date();
       return {
-        startTs: subDays(new Date(), 30).getTime(),
-        endTs: Date.now(),
+        startTs: subDays(now, 30).getTime(),
+        endTs: now.getTime(),
       };
     }
   }, [date, dateMode]);

@@ -1118,4 +1118,27 @@ export default defineSchema({
   })
     .index("by_metric", ["metric"])
     .index("by_onTrack", ["onTrack"]),
+
+  // AGT-257: Automation Metrics — Track automation milestones
+  automationMetrics: defineTable({
+    // Singleton key (only one record exists)
+    key: v.string(),              // "global"
+
+    // Current automation progress (0-100)
+    progressPercent: v.number(),
+
+    // Milestones achieved
+    milestones: v.array(v.object({
+      percent: v.number(),        // 10, 20, 30, ..., 100
+      label: v.string(),          // "Baseline - agents exist"
+      achieved: v.boolean(),      // Milestone completed?
+      achievedAt: v.optional(v.number()), // Timestamp when achieved
+      achievedBy: v.optional(v.string()), // Agent who achieved it
+      notes: v.optional(v.string()),      // Optional context
+    })),
+
+    // Timestamps
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 });

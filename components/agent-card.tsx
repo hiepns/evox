@@ -76,7 +76,8 @@ export function AgentCard({
 }: AgentCardProps) {
   const getRelativeTime = (date?: Date) => {
     if (!date) return "Never";
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
     if (seconds < 60) return "Just now";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -92,7 +93,8 @@ export function AgentCard({
   const getAgentStatus = () => {
     const ref = lastHeartbeat ?? lastActivityAt;
     if (!ref) return { status: "offline", color: "bg-red-500", label: "Offline" };
-    const minutesAgo = Math.floor((Date.now() - ref.getTime()) / 60000);
+    const now = new Date();
+    const minutesAgo = Math.floor((now.getTime() - ref.getTime()) / 60000);
     if (minutesAgo < 5) return { status: "active", color: "bg-green-500", label: "Active" };
     if (minutesAgo < 15) return { status: "idle", color: "bg-yellow-500", label: "Idle" };
     return { status: "offline", color: "bg-red-500", label: "Offline" };
