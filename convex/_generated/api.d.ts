@@ -40,6 +40,7 @@ import type * as settings from "../settings.js";
 import type * as skills from "../skills.js";
 import type * as slackNotify from "../slackNotify.js";
 import type * as standup from "../standup.js";
+import type * as system from "../system.js";
 import type * as taskComments from "../taskComments.js";
 import type * as tasks from "../tasks.js";
 import type * as webhooks from "../webhooks.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   skills: typeof skills;
   slackNotify: typeof slackNotify;
   standup: typeof standup;
+  system: typeof system;
   taskComments: typeof taskComments;
   tasks: typeof tasks;
   webhooks: typeof webhooks;

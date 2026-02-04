@@ -427,6 +427,16 @@ export default defineSchema({
     .index("by_task", ["taskId", "timestamp"])
     .index("by_timestamp", ["timestamp"]),
 
+  // AGT-212: Kill Switch / System State
+  systemState: defineTable({
+    key: v.string(),                      // "global" for main switch
+    paused: v.boolean(),
+    pausedAt: v.optional(v.number()),
+    pauseReason: v.optional(v.string()),
+    pausedBy: v.optional(v.string()),     // Who triggered the pause
+    resumedAt: v.optional(v.number()),
+  }).index("by_key", ["key"]),
+
   // AGT-211: Rate Limiting
   rateLimits: defineTable({
     agentName: v.string(),
