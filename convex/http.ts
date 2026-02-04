@@ -2739,3 +2739,63 @@ http.route({
     }
   }),
 });
+
+/**
+ * POST /v2/learn — Submit session learning (agents call this when ending session)
+ * Body: { agent, taskId?, taskTitle, summary, files, challenges?, patterns?, tags }
+ */
+http.route({
+  path: "/v2/learn",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { agent, taskId, taskTitle, summary, files, challenges, patterns, tags } = body;
+      if (!agent || !taskTitle || !summary) {
+        return new Response(JSON.stringify({ error: "agent, taskTitle, and summary required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const result = await ctx.runMutation(api.learnings.submitLearning, {
+        agentName: agent, taskId: taskId || undefined, taskTitle, summary,
+        filesChanged: files || [], challenges: challenges || undefined,
+        patterns: patterns || undefined, tags: tags || ["session"],
+      });
+      const agents = await ctx.runQuery(api.agents.list);
+      const agentRecord = agents.find((a: any) => a.name?.toLowerCase() === agent.toLowerCase());
+      if (agentRecord) {
+        await ctx.runMutation(api.activityEvents.log, {
+          agentId: agentRecord._id, category: "task", eventType: "learning_submitted",
+          title: agent.toUpperCase() + " logged session learning", description: summary.substring(0, 200),
+          linearIdentifier: taskId || undefined,
+        });
+      }
+      return new Response(JSON.stringify({ success: true, learningId: result.id }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      console.error("v2/learn error:", error);
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
+
+/**
+ * GET /v2/learnings — Get recent learnings (for agents to learn from others)
+ */
+http.route({
+  path: "/v2/learnings",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+      const limit = parseInt(url.searchParams.get("limit") || "20");
+      let learnings;
+      if (agent) {
+        learnings = await ctx.runQuery(api.learnings.getByAgent, { agentName: agent, limit });
+      } else {
+        learnings = await ctx.runQuery(api.learnings.listRecent, { limit });
+      }
+      return new Response(JSON.stringify({ learnings }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
