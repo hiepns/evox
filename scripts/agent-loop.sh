@@ -132,6 +132,10 @@ except:
   CURRENT_TICKET="$TICKET"
   send_heartbeat "working" "$TICKET"
 
+  # Auto-claim: Update Convex that this agent is working on ticket (AGT-261)
+  echo "Claiming $TICKET for $AGENT_UPPER..."
+  curl -s "$CONVEX_URL/claimTicket?agent=$AGENT_LOWER&ticket=$TICKET" > /dev/null 2>&1 || true
+
   # Mark dispatch running if we have one
   if [ -n "$DISPATCH_ID" ] && [ "$DISPATCH_ID" != "null" ]; then
     curl -s "$CONVEX_URL/markDispatchRunning?dispatchId=$DISPATCH_ID" > /dev/null 2>&1 || true
