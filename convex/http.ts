@@ -1299,20 +1299,17 @@ http.route({
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
-      } else if (channel) {
+      } else if (channel && fromAgent) {
         // Post to channel - log as activity event
         await ctx.runMutation(api.activityEvents.log, {
-          agentId: fromAgent?._id,
-          agentName: from.toLowerCase(),
-          category: "communication",
+          agentId: fromAgent._id,
+          category: "message",
           eventType: "channel_message",
           title: `${from.toUpperCase()} posted to #${channel}`,
           description: message,
           metadata: {
             source: "peer_communication",
-            channel,
           },
-          timestamp: now,
         });
 
         return new Response(JSON.stringify({ success: true, type: "channel", channel, from }), {
@@ -1370,9 +1367,8 @@ http.route({
       const now = Date.now();
       const oneDayAgo = now - 24 * 60 * 60 * 1000;
       const recentActivity = await ctx.runQuery(api.activityEvents.getByTimeRange, {
-        startTime: oneDayAgo,
-        endTime: now,
-        limit: 50,
+        startTs: oneDayAgo,
+        endTs: now,
       });
 
       const channelMentions = recentActivity.filter((a: any) =>
@@ -1384,7 +1380,8 @@ http.route({
         dms,
         channelMentions,
         unreadCount: unread.count,
-        unreadMessages: unread.messages,
+        unreadDMs: unread.dms,
+        unreadMentions: unread.mentions,
       }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
@@ -2433,20 +2430,18 @@ http.route({
       );
 
       // Log to activity events as channel message
-      const now = Date.now();
-      await ctx.runMutation(api.activityEvents.log, {
-        agentId: agent?._id,
-        agentName: from.toLowerCase(),
-        category: "communication",
-        eventType: "channel_message",
-        title: `Posted to #${channel}`,
-        description: message,
-        metadata: {
-          source: "agent_session",
-          channel,
-        },
-        timestamp: now,
-      });
+      if (agent) {
+        await ctx.runMutation(api.activityEvents.log, {
+          agentId: agent._id,
+          category: "message",
+          eventType: "channel_message",
+          title: `Posted to #${channel}`,
+          description: message,
+          metadata: {
+            source: "agent_session",
+          },
+        });
+      }
 
       return new Response(JSON.stringify({ success: true, channel, from }), {
         status: 200,
