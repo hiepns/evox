@@ -31,7 +31,7 @@
 | Agent update Linear | ✅ Done | MCP `update_issue` to Done |
 | Auto-test on PR | ✅ Done | GitHub Action `.github/workflows/test.yml` |
 | Auto-deploy | ✅ Done | Vercel auto-deploy on push to main |
-| Headless 24/7 | ⚠️ Partial | Needs API credits (subscription = TTY) |
+| 24/7 Operation | ✅ Done | tmux + terminal tabs (subscription) |
 | Sub-agent spawning | ❌ Todo | AGT-265 |
 | Agent communication | ✅ Done | Convex messages |
 | Error recovery | ⚠️ Partial | AGT-263 exponential backoff |
@@ -41,11 +41,11 @@
 ## Current Automation Rate
 
 ```
-████████░░ 80%
+█████████░ 90%
 
-Blocking issues:
-1. API credits for headless mode ($20-50 needed)
-2. Sub-agent spawning not implemented
+Remaining:
+1. Sub-agent spawning (AGT-265)
+2. Error recovery improvements (AGT-263)
 ```
 
 ---
@@ -121,10 +121,28 @@ Blocking issues:
 
 ## Next Steps (Priority Order)
 
-1. **Add API credits** — Unlock true 24/7 headless operation
-2. **AGT-263** — Exponential backoff for resilience
-3. **AGT-264** — Real-time activity dashboard
-4. **AGT-265** — Sub-agent spawning for parallel work
+1. **AGT-263** — Exponential backoff for resilience
+2. **AGT-264** — Real-time activity dashboard
+3. **AGT-265** — Sub-agent spawning for parallel work
+
+## How to Run (Subscription Mode)
+
+**Option 1: tmux (recommended)**
+```bash
+./scripts/start-all-agents.sh
+tmux attach -t evox  # Keep this window open
+```
+
+**Option 2: Terminal tabs**
+```bash
+# Open 4 terminal tabs, run one per tab:
+./scripts/agent-loop.sh sam
+./scripts/agent-loop.sh leo
+./scripts/agent-loop.sh max
+./scripts/agent-loop.sh quinn
+```
+
+Both options use subscription credits (no API costs).
 
 ---
 
