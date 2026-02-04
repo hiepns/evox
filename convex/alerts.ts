@@ -715,7 +715,15 @@ export const checkStuckAgents = internalAction({
     const STUCK_THRESHOLD_MS = 30 * 60 * 1000; // 30 minutes default
 
     // Get all agents with in_progress tasks
-    const agents = await ctx.runQuery(internal.alerts.getAgentsWithInProgressTasks);
+    const agents: {
+      name: string;
+      task: {
+        _id: Id<"tasks">;
+        linearIdentifier?: string;
+        updatedAt: number;
+        createdAt: number;
+      } | null;
+    }[] = await ctx.runQuery(internal.alerts.getAgentsWithInProgressTasks);
 
     const alerts: string[] = [];
 
