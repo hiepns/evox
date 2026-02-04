@@ -12,7 +12,7 @@
  * Channels: Telegram (P1), Slack, Email (P2), Browser (P3)
  */
 import { v } from "convex/values";
-import { mutation, query, internalMutation, internalAction, action } from "./_generated/server";
+import { mutation, query, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
@@ -679,7 +679,7 @@ async function triggerAlert(
 /**
  * Internal query for preferences (used in actions)
  */
-export const getPreferencesInternal = query({
+export const getPreferencesInternal = internalQuery({
   args: { target: v.string() },
   handler: async (ctx, args) => {
     const prefs = await ctx.db
@@ -744,9 +744,9 @@ export const checkStuckAgents = internalAction({
 });
 
 /**
- * Query to get agents with in-progress tasks (for stuck detection)
+ * Internal query to get agents with in-progress tasks (for stuck detection)
  */
-export const getAgentsWithInProgressTasks = query({
+export const getAgentsWithInProgressTasks = internalQuery({
   handler: async (ctx) => {
     const agents = await ctx.db.query("agents").collect();
     const result: {

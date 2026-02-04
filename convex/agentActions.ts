@@ -11,6 +11,7 @@
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { resolveAgentIdByName } from "./agentMappings";
 
 // Valid agent names
@@ -625,5 +626,105 @@ export const getAgentStats = query({
     });
 
     return stats;
+  },
+});
+
+/**
+ * AGT-215: Report a task failure and trigger alert.
+ *
+ * Usage from CLI:
+ * npx convex run agentActions:reportFailure '{"agent":"sam","ticket":"AGT-215","error":"Build failed: TypeScript errors","retryable":true}'
+ */
+export const reportFailure = mutation({
+  args: {
+    agent: v.union(
+      v.literal("leo"),
+      v.literal("sam"),
+      v.literal("max"),
+      v.literal("ella")
+    ),
+    ticket: v.string(), // e.g., "AGT-215"
+    error: v.string(),
+    retryable: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Resolve agent
+    const agentId = await resolveAgentIdByName(ctx.db, args.agent);
+    const agentDoc = await ctx.db.get(agentId);
+    if (!agentDoc) {
+      throw new Error(`Agent not found: ${args.agent}`);
+    }
+
+    // Find task by linearIdentifier
+    const ticketUpper = args.ticket.toUpperCase();
+    const task = await ctx.db
+      .query("tasks")
+      .withIndex("by_linearIdentifier", (q) => q.eq("linearIdentifier", ticketUpper))
+      .first();
+
+    // Log the error to execution logs
+    await ctx.db.insert("executionLogs", {
+      agentName: args.agent,
+      level: "error",
+      message: `Task ${args.ticket} failed: ${args.error}`,
+      taskId: task?._id,
+      linearIdentifier: args.ticket,
+      metadata: {
+        error: args.error,
+      },
+      timestamp: now,
+    });
+
+    // Update task with error info if found
+    if (task) {
+      const retryCount = (task.retryCount ?? 0) + 1;
+      await ctx.db.patch(task._id, {
+        lastError: args.error,
+        retryCount,
+        updatedAt: now,
+        // Escalate after 3 failed retries
+        ...(retryCount >= 3 && { escalatedAt: now }),
+      });
+    }
+
+    // Log activity event
+    await ctx.db.insert("activityEvents", {
+      agentId,
+      agentName: args.agent,
+      category: "system",
+      eventType: "task_failed",
+      title: `${args.agent.toUpperCase()} failed on ${args.ticket}`,
+      description: args.error,
+      taskId: task?._id,
+      linearIdentifier: args.ticket,
+      metadata: {
+        errorMessage: args.error,
+        source: "agent_api",
+      },
+      timestamp: now,
+    });
+
+    // AGT-215: Trigger alert for agent failure
+    await ctx.scheduler.runAfter(0, internal.alerts.triggerAgentFailed, {
+      agentName: args.agent,
+      taskId: task?._id,
+      linearIdentifier: args.ticket,
+      error: args.error,
+    });
+
+    // Also log to daily notes
+    await logToDailyNotes(ctx, agentId, "blocked", args.ticket, `ERROR: ${args.error}`);
+
+    return {
+      success: true,
+      agent: args.agent,
+      ticket: args.ticket,
+      error: args.error,
+      taskId: task?._id,
+      retryCount: task ? (task.retryCount ?? 0) + 1 : 1,
+      escalated: task ? ((task.retryCount ?? 0) + 1) >= 3 : false,
+    };
   },
 });

@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 
 // AGT-209: Approval Workflow
 // Tasks can require human approval before completion
@@ -40,6 +41,14 @@ export const submitForApproval = mutation({
         source: "approval_workflow",
       },
       timestamp: now,
+    });
+
+    // AGT-215: Trigger alert for approval needed
+    await ctx.scheduler.runAfter(0, internal.alerts.triggerNeedsApproval, {
+      taskId,
+      linearIdentifier: task.linearIdentifier,
+      taskTitle: task.title,
+      agentName: agentName.toLowerCase(),
     });
 
     return { success: true, taskId, status: "pending" };
