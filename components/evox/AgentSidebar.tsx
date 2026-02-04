@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useCallback } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -56,6 +57,27 @@ export function AgentSidebar({
   className = "",
 }: AgentSidebarProps) {
   const listAgents = useQuery(api.agents.list);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle click with delay to distinguish single vs double click
+  const handleClick = useCallback((agentId: Id<"agents">) => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+    clickTimeoutRef.current = setTimeout(() => {
+      onAgentClick(agentId);
+      clickTimeoutRef.current = null;
+    }, 200);
+  }, [onAgentClick]);
+
+  const handleDoubleClick = useCallback((agentId: Id<"agents">) => {
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
+    }
+    onAgentDoubleClick?.(agentId);
+  }, [onAgentDoubleClick]);
 
   const agents: SidebarAgent[] = sortAgents(
     (Array.isArray(listAgents) ? listAgents : []).map((a) => ({
@@ -101,8 +123,8 @@ export function AgentSidebar({
             <button
               key={agent._id}
               type="button"
-              onClick={() => onAgentClick(agent._id)}
-              onDoubleClick={() => onAgentDoubleClick?.(agent._id)}
+              onClick={() => handleClick(agent._id)}
+              onDoubleClick={() => handleDoubleClick(agent._id)}
               className={cn(
                 "flex h-16 w-full cursor-pointer items-center gap-3 border-b border-[#222222] px-3 text-left transition-colors duration-150",
                 "hover:bg-[#1a1a1a]",
