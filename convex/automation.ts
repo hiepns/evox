@@ -348,9 +348,10 @@ export const runAutoDispatchCycle = mutation({
 
 // =============================================================================
 // AGT-210: Self-Healing Retry
+// AGT-263: Updated to 5 retries with exponential backoff
 // =============================================================================
 
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 5;
 
 /**
  * Handle task failure with auto-retry logic

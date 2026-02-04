@@ -101,13 +101,68 @@ export const executeStep = internalAction({
     try {
       await ctx.runMutation(internal.execution.mutations.writeLog, { executionId, step, type: "system", content: `🔄 Step ${step}: Calling Claude API...` });
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({ model: execution.model, max_tokens: MAX_TOKENS_PER_STEP, system: systemPrompt, messages, tools: GITHUB_TOOLS }),
-      });
+      // AGT-263: Exponential backoff retry logic
+      const MAX_RETRIES = 5;
+      const RETRY_DELAYS_MS = [2000, 4000, 8000, 16000]; // 2s, 4s, 8s, 16s
+      let lastError: Error | null = null;
+      let response: Response | null = null;
 
-      if (!response.ok) { const errBody = await response.text(); throw new Error(`Claude API ${response.status}: ${errBody}`); }
+      for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+          response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+            body: JSON.stringify({ model: execution.model, max_tokens: MAX_TOKENS_PER_STEP, system: systemPrompt, messages, tools: GITHUB_TOOLS }),
+          });
+
+          if (response.ok) {
+            // Success - break out of retry loop
+            if (attempt > 0) {
+              await ctx.runMutation(internal.execution.mutations.writeLog, {
+                executionId, step, type: "system",
+                content: `✅ API call succeeded after ${attempt + 1} attempts`
+              });
+            }
+            break;
+          }
+
+          // Handle rate limit or server errors
+          const errBody = await response.text();
+          const isRateLimitOrServerError = response.status === 429 || response.status >= 500;
+
+          if (isRateLimitOrServerError && attempt < MAX_RETRIES - 1) {
+            const delayMs = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+            await ctx.runMutation(internal.execution.mutations.writeLog, {
+              executionId, step, type: "warning",
+              content: `⚠️ API error ${response.status} (attempt ${attempt + 1}/${MAX_RETRIES}). Retrying in ${delayMs / 1000}s...`,
+              metadata: JSON.stringify({ attempt: attempt + 1, delayMs, status: response.status })
+            });
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            continue;
+          }
+
+          // Non-retryable error or max retries reached
+          throw new Error(`Claude API ${response.status}: ${errBody}`);
+        } catch (error: any) {
+          lastError = error;
+          if (attempt < MAX_RETRIES - 1 && (error.message.includes("rate limit") || error.message.includes("500") || error.message.includes("429"))) {
+            const delayMs = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
+            await ctx.runMutation(internal.execution.mutations.writeLog, {
+              executionId, step, type: "warning",
+              content: `⚠️ ${error.message.slice(0, 100)} (attempt ${attempt + 1}/${MAX_RETRIES}). Retrying in ${delayMs / 1000}s...`,
+              metadata: JSON.stringify({ attempt: attempt + 1, delayMs })
+            });
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw lastError || new Error("Failed to get response from Claude API after retries");
+      }
+
       const data = await response.json();
 
       const inputTokens = data.usage?.input_tokens ?? 0;
