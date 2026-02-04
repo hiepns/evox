@@ -1,6 +1,8 @@
 #!/bin/bash
-# start-all-agents.sh — Start core EVOX agents (no tmux required)
-# Usage: ./scripts/start-all-agents.sh
+# start-all-agents.sh — Start agents with SUBSCRIPTION (not API credits)
+# Uses tmux to provide real TTY for each agent = subscription auth
+#
+# Von Neumann insight: Subscription requires TTY. tmux provides TTY.
 
 set -e
 
@@ -8,7 +10,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 echo "╔════════════════════════════════════════════════╗"
-echo "║  EVOX — Automation Squad (4 Agents)            ║"
+echo "║  EVOX — Automation Squad (tmux + subscription) ║"
 echo "╚════════════════════════════════════════════════╝"
 echo ""
 echo "North Star: 100% AUTOMATION"
@@ -17,39 +19,69 @@ echo ""
 # Create logs dir
 mkdir -p logs
 
-# Kill existing agent processes
-echo "Cleaning up..."
-pkill -f "agent-loop.sh" 2>/dev/null || true
-rm -f .lock-* 2>/dev/null || true
-sleep 1
-
-echo "Starting agents in background..."
-echo ""
-
 # Load environment variables
 if [ -f ".env.local" ]; then
-  export $(grep -v '^#' .env.local | xargs)
+  set -a
+  source .env.local
+  set +a
 fi
 
-# Start agents in background with nohup (inherits env)
-nohup ./scripts/agent-loop.sh sam > logs/sam.log 2>&1 &
-echo "  ✅ SAM  — Backend (PID: $!)"
+# Kill existing
+echo "Cleaning up..."
+tmux kill-session -t evox 2>/dev/null || true
+pkill -f "agent-loop.sh" 2>/dev/null || true
+rm -f .lock-* 2>/dev/null || true
+sleep 2
 
-nohup ./scripts/agent-loop.sh leo > logs/leo.log 2>&1 &
-echo "  ✅ LEO  — Frontend (PID: $!)"
+# Check tmux
+if ! command -v tmux &> /dev/null; then
+    echo "❌ tmux not found. Install with: brew install tmux"
+    exit 1
+fi
 
-nohup ./scripts/agent-loop.sh max > logs/max.log 2>&1 &
-echo "  ✅ MAX  — PM (PID: $!)"
+echo "Creating tmux session 'evox' with 4 agent windows..."
+echo ""
 
-nohup ./scripts/agent-loop.sh quinn > logs/quinn.log 2>&1 &
-echo "  ✅ QUINN — QA (PID: $!)"
+# Create detached tmux session with first window (sam)
+tmux new-session -d -s evox -n sam -x 200 -y 50
+
+# Set environment in tmux
+tmux set-environment -t evox LINEAR_API_KEY "$LINEAR_API_KEY"
+tmux set-environment -t evox CONVEX_DEPLOYMENT "$CONVEX_DEPLOYMENT"
+
+# Start SAM in first window
+tmux send-keys -t evox:sam "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh sam 2>&1 | tee logs/sam.log" Enter
+echo "  ✅ SAM  — Backend (tmux window 0)"
+
+# Create and start LEO
+tmux new-window -t evox -n leo
+tmux send-keys -t evox:leo "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh leo 2>&1 | tee logs/leo.log" Enter
+echo "  ✅ LEO  — Frontend (tmux window 1)"
+
+# Create and start MAX
+tmux new-window -t evox -n max
+tmux send-keys -t evox:max "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh max 2>&1 | tee logs/max.log" Enter
+echo "  ✅ MAX  — PM (tmux window 2)"
+
+# Create and start QUINN
+tmux new-window -t evox -n quinn
+tmux send-keys -t evox:quinn "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh quinn 2>&1 | tee logs/quinn.log" Enter
+echo "  ✅ QUINN — QA (tmux window 3)"
 
 sleep 2
 
 echo ""
 echo "╔════════════════════════════════════════════════╗"
-echo "║  4 agents running in background                ║"
+echo "║  4 agents running in tmux session 'evox'       ║"
+echo "║  Using SUBSCRIPTION credits (real TTY)         ║"
 echo "╚════════════════════════════════════════════════╝"
+echo ""
+echo "Monitor agents:"
+echo "  tmux attach -t evox          # View all"
+echo "  tmux select-window -t evox:0 # SAM"
+echo "  tmux select-window -t evox:1 # LEO"
+echo "  tmux select-window -t evox:2 # MAX"
+echo "  tmux select-window -t evox:3 # QUINN"
 echo ""
 echo "View logs:"
 echo "  tail -f logs/sam.log"

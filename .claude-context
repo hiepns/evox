@@ -17,9 +17,9 @@ Max = PM agent trong EVOX system. Responsible for: planning, ticket creation, ba
 - Track project status and blockers
 
 === CURRENT STATE ===
-Status: busy
+Status: idle
+Last task: None
+Queue: Empty
 
 === DISPATCH RULES ===
 - Commit with "closes None" when done
-- Push immediately after commit
-- Leave Linear comment: files changed, what was done
