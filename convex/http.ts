@@ -2577,7 +2577,7 @@ http.route({
         await ctx.runMutation(api.activityEvents.log, {
           agentId: agent._id, category: "message", eventType: "ping",
           title: (from || "System") + " pinged " + to.toUpperCase(), description: message,
-          metadata: { source: "ping_system", pingType: pingType || "normal", from: from || "system" },
+          metadata: { source: "ping_system" },
         });
       }
       return new Response(JSON.stringify({ success: true, ...result }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -2612,9 +2612,9 @@ http.route({
         from, to, content: "🤝 HANDOFF: " + handoffMessage, priority: "normal", relatedTaskId: taskId,
       });
       await ctx.runMutation(api.activityEvents.log, {
-        agentId: fromAgent?._id || toAgent._id, agentName: from.toLowerCase(), category: "task", eventType: "handoff",
+        agentId: fromAgent?._id || toAgent._id, category: "task", eventType: "handoff",
         title: from.toUpperCase() + " handed off to " + to.toUpperCase(), description: handoffMessage,
-        metadata: { source: "handoff_system", fromAgent: from, toAgent: to, reason }, timestamp: now,
+        metadata: { source: "handoff_system" },
       });
       return new Response(JSON.stringify({ success: true, from, to, message: handoffMessage }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (error) {
@@ -2648,11 +2648,13 @@ http.route({
           message: question, relatedTask: taskId,
         });
       }
-      await ctx.runMutation(api.activityEvents.log, {
-        agentId: maxAgent?._id, agentName: "max", category: "communication", eventType: "approval_request",
-        title: from.toUpperCase() + " requested approval", description: question,
-        metadata: { source: "approval_system", from, options }, timestamp: Date.now(),
-      });
+      if (maxAgent) {
+        await ctx.runMutation(api.activityEvents.log, {
+          agentId: maxAgent._id, category: "message", eventType: "approval_request",
+          title: from.toUpperCase() + " requested approval", description: question,
+          metadata: { source: "approval_system" },
+        });
+      }
       return new Response(JSON.stringify({ success: true, ...result, sentTo: "max" }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (error) {
       return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
