@@ -786,4 +786,53 @@ export default defineSchema({
     .index("by_status", ["status", "startedAt"])
     .index("by_runId", ["runId"])
     .index("by_commit", ["commitHash"]),
+
+  // AGT-247: Event Bus — Real-time Agent Notifications
+  // Replaces 60s polling with instant push notifications
+  agentEvents: defineTable({
+    // Event type
+    type: v.union(
+      v.literal("task_assigned"),      // New task assigned to agent
+      v.literal("task_completed"),     // Task completed by agent
+      v.literal("handoff"),            // Task handed off to another agent
+      v.literal("mention"),            // Agent mentioned in message/comment
+      v.literal("approval_needed"),    // Task requires approval
+      v.literal("system_alert"),       // System-wide alert
+      v.literal("dispatch")            // New dispatch available
+    ),
+
+    // Target agent (who should receive this notification)
+    targetAgent: v.string(),           // "sam", "leo", "max", "quinn"
+
+    // Event payload
+    payload: v.object({
+      taskId: v.optional(v.string()),           // Linear identifier like "AGT-247"
+      dispatchId: v.optional(v.string()),       // Convex dispatch ID
+      fromAgent: v.optional(v.string()),        // Who triggered this event
+      message: v.optional(v.string()),          // Human-readable message
+      priority: v.optional(v.union(             // Event priority
+        v.literal("low"),
+        v.literal("normal"),
+        v.literal("high"),
+        v.literal("urgent")
+      )),
+      metadata: v.optional(v.any()),            // Additional event data
+    }),
+
+    // Status
+    status: v.union(
+      v.literal("pending"),            // Not yet delivered
+      v.literal("delivered"),          // Agent acknowledged receipt
+      v.literal("expired")             // Event too old, discarded
+    ),
+
+    // Timestamps
+    createdAt: v.number(),
+    deliveredAt: v.optional(v.number()),
+    expiresAt: v.number(),             // Auto-expire after 5 minutes
+  })
+    .index("by_target_status", ["targetAgent", "status", "createdAt"])
+    .index("by_target_created", ["targetAgent", "createdAt"])
+    .index("by_status", ["status"])
+    .index("by_expires", ["expiresAt"]),
 });

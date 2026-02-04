@@ -199,6 +199,22 @@ export const completeTask = mutation({
         durationMinutes,
         success: true,
       });
+
+      // AGT-247: Fire event bus notification for task completion
+      await ctx.scheduler.runAfter(0, internal.agentEvents.publishEvent, {
+        type: "task_completed",
+        targetAgent: args.agent,
+        payload: {
+          taskId: task.linearIdentifier ?? args.ticket,
+          fromAgent: args.agent,
+          message: `Task ${task.linearIdentifier ?? args.ticket} completed`,
+          priority: "normal",
+          metadata: {
+            summary: args.summary,
+            filesChanged: args.filesChanged,
+          },
+        },
+      });
     } else if (args.action === "in_progress") {
       await logToDailyNotes(ctx, agentId, "started", task.linearIdentifier ?? args.ticket, args.summary);
 

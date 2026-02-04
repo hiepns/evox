@@ -28,6 +28,7 @@ import { v } from "convex/values";
 
 /**
  * Capture a screenshot of a page
+ * TEMPORARILY DISABLED - See file header
  */
 export const screenshot = action({
   args: {
@@ -35,24 +36,13 @@ export const screenshot = action({
     timeout: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const result = await captureScreenshot({
-      url: args.url,
-      timeout: args.timeout,
-      headless: true,
-    });
-
-    if (!result.success) {
-      throw new Error(`Screenshot failed: ${result.error}`);
-    }
-
-    return {
-      screenshot: result.screenshot!,
-    };
+    throw new Error("Browser actions temporarily disabled due to Playwright bundling issues. See AGT-240.");
   },
 });
 
 /**
  * Check for console errors on a page
+ * TEMPORARILY DISABLED - See file header
  */
 export const checkErrors = action({
   args: {
@@ -60,25 +50,13 @@ export const checkErrors = action({
     timeout: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const result = await checkConsoleErrors({
-      url: args.url,
-      timeout: args.timeout,
-      headless: true,
-    });
-
-    if (!result.success) {
-      throw new Error(`Console check failed: ${result.error}`);
-    }
-
-    return {
-      hasErrors: (result.consoleErrors?.length ?? 0) > 0,
-      errors: result.consoleErrors ?? [],
-    };
+    throw new Error("Browser actions temporarily disabled due to Playwright bundling issues. See AGT-240.");
   },
 });
 
 /**
  * Verify a UI element exists
+ * TEMPORARILY DISABLED - See file header
  */
 export const verifyElement = action({
   args: {
@@ -87,29 +65,14 @@ export const verifyElement = action({
     timeout: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const result = await verifyElementExists(
-      {
-        url: args.url,
-        timeout: args.timeout,
-        headless: true,
-      },
-      args.selector
-    );
-
-    if (!result.success) {
-      throw new Error(`Element verification failed: ${result.error}`);
-    }
-
-    return {
-      exists: result.elementExists!,
-      screenshot: result.screenshot, // Included if element not found
-    };
+    throw new Error("Browser actions temporarily disabled due to Playwright bundling issues. See AGT-240.");
   },
 });
 
 /**
  * Comprehensive check - screenshot + errors + elements
  * This is the main action Quinn should use
+ * TEMPORARILY DISABLED - See file header
  */
 export const comprehensivePageCheck = action({
   args: {
@@ -118,70 +81,17 @@ export const comprehensivePageCheck = action({
     timeout: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const result = await comprehensiveCheck(
-      {
-        url: args.url,
-        timeout: args.timeout,
-        headless: true,
-      },
-      args.selectors
-    );
-
-    if (!result.success) {
-      throw new Error(`Comprehensive check failed: ${result.error}`);
-    }
-
-    return {
-      screenshot: result.screenshot!,
-      hasErrors: (result.consoleErrors?.length ?? 0) > 0,
-      errors: result.consoleErrors ?? [],
-      elementsFound: result.elementsFound,
-      summary: {
-        totalErrors: result.consoleErrors?.length ?? 0,
-        totalElements: args.selectors?.length ?? 0,
-        elementsExist: args.selectors
-          ? Object.values(result.elementsFound ?? {}).filter(Boolean).length
-          : 0,
-      },
-    };
+    throw new Error("Browser actions temporarily disabled due to Playwright bundling issues. See AGT-240.");
   },
 });
 
 /**
  * Quick health check - localhost:3000 with common selectors
+ * TEMPORARILY DISABLED - See file header
  */
 export const quickHealthCheck = action({
   args: {},
   handler: async (ctx) => {
-    const commonSelectors = [
-      "body",
-      "main",
-      "nav",
-      "[data-testid]", // Any element with test id
-    ];
-
-    const result = await comprehensiveCheck(
-      {
-        url: "http://localhost:3000",
-        timeout: 30000,
-        headless: true,
-      },
-      commonSelectors
-    );
-
-    if (!result.success) {
-      throw new Error(`Health check failed: ${result.error}`);
-    }
-
-    const allElementsExist = commonSelectors.every(
-      (selector) => result.elementsFound?.[selector] === true
-    );
-
-    return {
-      healthy: allElementsExist && (result.consoleErrors?.length ?? 0) === 0,
-      screenshot: result.screenshot!,
-      errors: result.consoleErrors ?? [],
-      elementsFound: result.elementsFound,
-    };
+    throw new Error("Browser actions temporarily disabled due to Playwright bundling issues. See AGT-240.");
   },
 });
