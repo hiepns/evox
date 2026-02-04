@@ -2154,4 +2154,145 @@ http.route({
   }),
 });
 
+// ============================================================
+// AGT-226: LONG-RUNNING SESSION ENDPOINTS
+// ============================================================
+
+/**
+ * GET /getAgentMessages?agent=sam — Get unread messages for agent
+ * Returns DMs and @mentions for the agent
+ */
+http.route({
+  path: "/getAgentMessages",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const unread = await ctx.runQuery(api.messaging.getUnread, {
+        agentName: agent,
+      });
+
+      return new Response(JSON.stringify(unread), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get agent messages error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /markMessagesRead — Mark messages as read for agent
+ * Body: { agentName: string, messageId?: string }
+ * If messageId provided, marks one message; otherwise marks all
+ */
+http.route({
+  path: "/markMessagesRead",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { agentName, messageId } = body;
+
+      if (!agentName) {
+        return new Response(
+          JSON.stringify({ error: "agentName is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      let result;
+      if (messageId) {
+        result = await ctx.runMutation(api.messaging.markRead, {
+          messageId: messageId as Id<"unifiedMessages">,
+        });
+      } else {
+        result = await ctx.runMutation(api.messaging.markAllRead, {
+          agentName,
+        });
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Mark messages read error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * POST /postToChannel — Post a message to a team channel
+ * Body: { from: string, channel: string, message: string }
+ */
+http.route({
+  path: "/postToChannel",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { from, channel, message } = body;
+
+      if (!from || !channel || !message) {
+        return new Response(
+          JSON.stringify({ error: "from, channel, and message are required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Find agent
+      const agents = await ctx.runQuery(api.agents.list);
+      const agent = agents.find(
+        (a: any) => a.name.toLowerCase() === from.toLowerCase()
+      );
+
+      // Log to activity events as channel message
+      const now = Date.now();
+      await ctx.runMutation(api.activityEvents.log, {
+        agentId: agent?._id,
+        agentName: from.toLowerCase(),
+        category: "communication",
+        eventType: "channel_message",
+        title: `Posted to #${channel}`,
+        description: message,
+        metadata: {
+          source: "agent_session",
+          channel,
+        },
+        timestamp: now,
+      });
+
+      return new Response(JSON.stringify({ success: true, channel, from }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Post to channel error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
 export default http;
