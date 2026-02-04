@@ -1,56 +1,82 @@
 # Agent Dispatch Queue
 
-*Updated: Feb 4, 2026 — Session 16*
+*Updated: Feb 4, 2026 — Session 16 (Max)*
 
 ---
 
-## Sam (Backend) — Phase 8: Hands-Off Operation
+## 🔴 P0 — BLOCKING (Do First!)
 
-| Priority | Ticket | Task | Status |
-|----------|--------|------|--------|
-| 1 | **AGT-216** | Auto-Recovery — Self-healing restart & retry | TODO |
-| 2 | AGT-214 | Cron Scheduler — Schedule agent tasks | IN PROGRESS |
-| 3 | AGT-222 | Session Learning System | TODO |
-| 4 | AGT-223 | Max Autonomous Monitor | TODO |
-| 5 | AGT-225 | QA Agent Integration — Automated test gate | TODO |
+### Sam (Backend)
+| Ticket | Task | Status |
+|--------|------|--------|
+| **AGT-236** | URGENT: Fix v2 Messaging Endpoints | TODO |
 
-**Instructions:** Continue AGT-214 then move to AGT-222 (Session Learning).
-
----
-
-## Leo (Frontend) — Phase 8
-
-| Priority | Ticket | Task | Status |
-|----------|--------|------|--------|
-| 1 | **AGT-224** | Public Demo Mode — Read-only viewer protection | TODO |
-| 2 | AGT-213 | Automation Dashboard | IN PROGRESS |
-
-**Instructions:** Continue AGT-213 then AGT-224 (Public Demo Mode - critical security).
+### Leo (Frontend)
+| Ticket | Task | Status |
+|--------|------|--------|
+| **AGT-230** | Public Demo Mode — Security | TODO |
 
 ---
 
-## Quinn (QA) — Quality Assurance
+## 🟠 P1 — Important
 
-| Priority | Task | Status |
-|----------|------|--------|
-| 1 | Review recent commits from Sam/Leo | ONGOING |
-| 2 | Test AGT-213 (Automation Dashboard) | TODO |
-| 3 | Test AGT-214 (Cron Scheduler) | TODO |
-| 4 | Regression test critical paths | TODO |
+### Sam (Backend)
+| Ticket | Task | Status |
+|--------|------|--------|
+| AGT-223 | Max Autonomous Monitor | TODO |
+| AGT-234 | Improved Communication — Auto-handoff | TODO |
+| AGT-226 | Long-Running Session Mode | TODO |
 
-**Instructions:** Test features after Sam/Leo complete. Report bugs via #dev channel + Linear tickets.
+### Leo (Frontend)
+| Ticket | Task | Status |
+|--------|------|--------|
+| AGT-233 | Display Onboarded Agents | TODO |
 
 ---
 
-## Completed (Phase 8)
-- ✓ AGT-217: Health Dashboard (Leo)
-- ✓ AGT-215: Alert System (Sam)
+## 🟡 P2 — Normal
 
-## Completed (Phase 6-7)
-- ✓ AGT-212: Kill Switch (Sam + Leo)
-- ✓ AGT-211: Rate Limiting (Sam)
-- ✓ AGT-210: Self-Healing Retry (Sam)
-- ✓ AGT-209: Approval Workflow (Sam)
-- ✓ AGT-208: Auto-Dispatch (Sam)
-- ✓ AGT-206: View Tabs (Leo)
-- ✓ AGT-204: Heartbeat Panel (Leo)
+### Sam (Backend)
+| Ticket | Task | Status |
+|--------|------|--------|
+| AGT-225 | QA Agent Integration | TODO |
+| AGT-228 | Peer Communication | TODO |
+| AGT-229 | Priority Override | TODO |
+
+---
+
+## Quinn (QA)
+
+| Task | Status |
+|------|--------|
+| QA patrol — test recent commits | ONGOING |
+| Fix simple bugs (< 5 lines) | ONGOING |
+| Test AGT-230 when Leo completes | TODO |
+
+---
+
+## Completed Today
+
+- ✅ AGT-222: Session Learning System (Sam)
+- ✅ AGT-205: Analytics Panel v2 (Leo)
+- ✅ AGT-213: Automation Dashboard (Leo)
+- ✅ VelocityChart fix (Max)
+- ✅ Quinn upgraded to Bug Fixer (Max)
+- ✅ Shared skills.sh created (Max)
+- ✅ Culture system docs (Max)
+
+---
+
+## Instructions
+
+**Sam:** Start with AGT-236 (messaging fix) — URGENT. Agents cannot communicate.
+
+**Leo:** Start with AGT-230 (demo mode) — CRITICAL security. Site is public.
+
+**Quinn:** Continue QA patrol. Fix simple bugs. Report complex ones.
+
+**Max:** Monitor progress. Unblock issues. Coordinate.
+
+---
+
+*Read docs/ROADMAP.md for long-term vision.*
