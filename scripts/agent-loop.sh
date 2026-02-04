@@ -77,24 +77,27 @@ while true; do
   TICKET=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ticket',''))" 2>/dev/null || echo "")
 
   # === 2. If no dispatch, poll Linear directly ===
-  if [ -z "$TICKET" ] || [ "$TICKET" = "null" ] || [ "$TICKET" = "" ]; then
+  # Check for empty, "null" (JSON string), "None" (Python None printed), or empty string
+  if [ -z "$TICKET" ] || [ "$TICKET" = "null" ] || [ "$TICKET" = "None" ] || [ "$TICKET" = "" ]; then
     echo "No dispatch. Polling Linear directly..."
 
     # Query Linear for unassigned backlog tickets matching agent role
-    LINEAR_QUERY='{"query":"{ issues(filter: { state: { type: { in: [\"backlog\", \"unstarted\"] } }, assignee: { null: true } }, first: 10, orderBy: priority) { nodes { identifier title priority state { name } labels { nodes { name } } } } }"}'
+    # Note: orderBy must be updatedAt or createdAt (not priority)
+    LINEAR_QUERY='{"query":"{ issues(filter: { state: { type: { in: [\"backlog\", \"unstarted\"] } }, assignee: { null: true } }, first: 10) { nodes { identifier title priority state { name } labels { nodes { name } } } } }"}'
 
     LINEAR_RESPONSE=$(curl -s -X POST "$LINEAR_API" \
       -H "Content-Type: application/json" \
       -H "Authorization: $LINEAR_API_KEY" \
       -d "$LINEAR_QUERY" 2>/dev/null || echo "{}")
 
-    # Find ticket matching agent's keywords
+    # Find ticket matching agent's keywords (or take first available)
     TICKET=$(echo "$LINEAR_RESPONSE" | python3 -c "
 import json, sys, re
 try:
     data = json.load(sys.stdin)
     issues = data.get('data', {}).get('issues', {}).get('nodes', [])
     keywords = '$KEYWORDS'
+    # First try keyword match
     for issue in issues:
         title = issue.get('title', '')
         labels = ' '.join([l.get('name','') for l in issue.get('labels',{}).get('nodes',[])])
@@ -102,8 +105,8 @@ try:
             print(issue.get('identifier', ''))
             break
     else:
-        # No keyword match, take first available if agent is general
-        if '$ROLE' == 'general' and issues:
+        # No keyword match - take first available ticket (any agent can help)
+        if issues:
             print(issues[0].get('identifier', ''))
 except:
     pass
@@ -113,7 +116,7 @@ except:
   fi
 
   # === 3. No work found ===
-  if [ -z "$TICKET" ] || [ "$TICKET" = "null" ] || [ "$TICKET" = "" ]; then
+  if [ -z "$TICKET" ] || [ "$TICKET" = "null" ] || [ "$TICKET" = "None" ] || [ "$TICKET" = "" ]; then
     send_heartbeat "idle" "no_work"
     echo "$(date '+%H:%M:%S') — No work for $AGENT_UPPER. Sleeping 30s..."
     sleep 30

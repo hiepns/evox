@@ -49,23 +49,24 @@ tmux new-session -d -s evox -n sam -x 200 -y 50
 tmux set-environment -t evox LINEAR_API_KEY "$LINEAR_API_KEY"
 tmux set-environment -t evox CONVEX_DEPLOYMENT "$CONVEX_DEPLOYMENT"
 
-# Start SAM in first window
-tmux send-keys -t evox:sam "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh sam 2>&1 | tee logs/sam.log" Enter
+# Start SAM in first window - run directly in tmux (TTY preserved, tmux captures output)
+# Mac script syntax: script [-aq] file command...
+tmux send-keys -t evox:sam "cd $PROJECT_DIR && export \$(grep -v '^#' .env.local | cut -d'#' -f1 | xargs) && script -q -a logs/sam.log ./scripts/agent-loop.sh sam" Enter
 echo "  ✅ SAM  — Backend (tmux window 0)"
 
 # Create and start LEO
 tmux new-window -t evox -n leo
-tmux send-keys -t evox:leo "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh leo 2>&1 | tee logs/leo.log" Enter
+tmux send-keys -t evox:leo "cd $PROJECT_DIR && export \$(grep -v '^#' .env.local | cut -d'#' -f1 | xargs) && script -q -a logs/leo.log ./scripts/agent-loop.sh leo" Enter
 echo "  ✅ LEO  — Frontend (tmux window 1)"
 
 # Create and start MAX
 tmux new-window -t evox -n max
-tmux send-keys -t evox:max "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh max 2>&1 | tee logs/max.log" Enter
+tmux send-keys -t evox:max "cd $PROJECT_DIR && export \$(grep -v '^#' .env.local | cut -d'#' -f1 | xargs) && script -q -a logs/max.log ./scripts/agent-loop.sh max" Enter
 echo "  ✅ MAX  — PM (tmux window 2)"
 
 # Create and start QUINN
 tmux new-window -t evox -n quinn
-tmux send-keys -t evox:quinn "cd $PROJECT_DIR && source .env.local && ./scripts/agent-loop.sh quinn 2>&1 | tee logs/quinn.log" Enter
+tmux send-keys -t evox:quinn "cd $PROJECT_DIR && export \$(grep -v '^#' .env.local | cut -d'#' -f1 | xargs) && script -q -a logs/quinn.log ./scripts/agent-loop.sh quinn" Enter
 echo "  ✅ QUINN — QA (tmux window 3)"
 
 sleep 2
