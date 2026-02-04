@@ -380,6 +380,10 @@ export default defineSchema({
     command: v.string(),
     payload: v.optional(v.string()),
     status: v.union(v.literal("pending"), v.literal("running"), v.literal("completed"), v.literal("failed")),
+    // AGT-229: Priority Override
+    // 0=URGENT (boss override), 1=HIGH, 2=NORMAL, 3=LOW
+    priority: v.optional(v.number()),
+    isUrgent: v.optional(v.boolean()),
     createdAt: v.number(),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
@@ -388,7 +392,8 @@ export default defineSchema({
   })
     .index("by_status", ["status"])
     .index("by_agent", ["agentId", "status"])
-    .index("by_created", ["createdAt"]),
+    .index("by_created", ["createdAt"])
+    .index("by_priority", ["status", "priority", "createdAt"]),
 
   // Activity logs (Linear-style events)
   activityLogs: defineTable({

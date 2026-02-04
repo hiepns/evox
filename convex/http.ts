@@ -2457,4 +2457,92 @@ http.route({
   }),
 });
 
+
+// ============================================================
+// AGT-229: PRIORITY OVERRIDE ENDPOINTS
+// ============================================================
+
+/**
+ * POST /createUrgentDispatch — Create urgent (P0) dispatch
+ */
+http.route({
+  path: "/createUrgentDispatch",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { agentName, command, ticket, description } = body;
+      if (!agentName || !command) {
+        return new Response(JSON.stringify({ error: "agentName and command required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const agents = await ctx.runQuery(api.agents.list);
+      const agent = agents.find((a: any) => a.name.toLowerCase() === agentName.toLowerCase());
+      if (!agent) {
+        return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      }
+      const dispatchId = await ctx.runMutation(api.dispatches.create, {
+        agentId: agent._id, command, payload: JSON.stringify({ identifier: ticket, description }), priority: 0, isUrgent: true,
+      });
+      return new Response(JSON.stringify({ success: true, dispatchId, priority: "URGENT" }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
+
+/**
+ * POST /sendUrgentMessage — Send urgent alert to agent
+ */
+http.route({
+  path: "/sendUrgentMessage",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { to, message, from } = body;
+      if (!to || !message) {
+        return new Response(JSON.stringify({ error: "to and message required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const result = await ctx.runMutation(api.messaging.sendDM, {
+        from: from || "son", to, content: "🚨 URGENT: " + message, priority: "urgent",
+      });
+      return new Response(JSON.stringify({ success: true, ...result }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
+
+/**
+ * POST /interruptAgent — Stop agent's current task
+ */
+http.route({
+  path: "/interruptAgent",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const body = await request.json();
+      const { agentName, reason } = body;
+      if (!agentName) {
+        return new Response(JSON.stringify({ error: "agentName required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      }
+      const agents = await ctx.runQuery(api.agents.list);
+      const agent = agents.find((a: any) => a.name.toLowerCase() === agentName.toLowerCase());
+      if (!agent) {
+        return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      }
+      await ctx.runMutation(api.agents.updateStatus, { id: agent._id, status: "idle" });
+      const runningDispatches = await ctx.runQuery(api.dispatches.listByAgent, { agentId: agent._id, status: "running" });
+      for (const d of runningDispatches) {
+        await ctx.runMutation(api.dispatches.fail, { dispatchId: d._id, error: reason || "Interrupted" });
+      }
+      await ctx.runMutation(api.messaging.sendDM, {
+        from: "son", to: agentName.toLowerCase(), content: "⛔ STOP: " + (reason || "Pause current work."), priority: "urgent",
+      });
+      return new Response(JSON.stringify({ success: true, interrupted: true, dispatchesCancelled: runningDispatches.length }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (error) {
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }),
+});
 export default http;

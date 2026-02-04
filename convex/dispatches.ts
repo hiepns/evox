@@ -12,8 +12,10 @@ export const create = mutation({
     agentId: v.id("agents"),
     command: v.string(),
     payload: v.optional(v.string()),
+    priority: v.optional(v.number()), // 0=URGENT, 1=HIGH, 2=NORMAL (default), 3=LOW
+    isUrgent: v.optional(v.boolean()),
   },
-  handler: async (ctx, { agentId, command, payload }) => {
+  handler: async (ctx, { agentId, command, payload, priority, isUrgent }) => {
     const agent = await ctx.db.get(agentId);
     if (!agent) throw new Error("Agent not found");
 
@@ -21,6 +23,8 @@ export const create = mutation({
       agentId,
       command,
       payload,
+      priority: priority ?? 2, // Default to NORMAL
+      isUrgent: isUrgent ?? priority === 0,
       status: "pending",
       createdAt: Date.now(),
     });
@@ -94,7 +98,7 @@ export const fail = mutation({
   },
 });
 
-// List all pending dispatches (with agent names)
+// List all pending dispatches (with agent names), sorted by priority
 export const listPending = query({
   args: {},
   handler: async (ctx) => {
@@ -102,11 +106,19 @@ export const listPending = query({
       .query("dispatches")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("asc")
-      .take(20);
+      .take(50);
+
+    // Sort by priority (0=URGENT first), then by createdAt
+    const sorted = dispatches.sort((a, b) => {
+      const priorityA = a.priority ?? 2;
+      const priorityB = b.priority ?? 2;
+      if (priorityA !== priorityB) return priorityA - priorityB;
+      return (a.createdAt ?? 0) - (b.createdAt ?? 0);
+    });
 
     // Enrich with agent names
     return Promise.all(
-      dispatches.map(async (d) => {
+      sorted.map(async (d) => {
         const agent = await ctx.db.get(d.agentId);
         return {
           ...d,
