@@ -27,7 +27,8 @@ const STALE_THRESHOLD = 15 * 60 * 1000; // 15 minutes
 /** Get health status based on last heartbeat */
 function getHealthStatus(lastHeartbeat?: number): "healthy" | "stale" | "offline" {
   if (!lastHeartbeat) return "offline";
-  const elapsed = Date.now() - lastHeartbeat;
+  const currentTime = new Date().getTime();
+  const elapsed = currentTime - lastHeartbeat;
   if (elapsed < HEALTHY_THRESHOLD) return "healthy";
   if (elapsed < STALE_THRESHOLD) return "stale";
   return "offline";

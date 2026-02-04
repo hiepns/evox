@@ -63,7 +63,8 @@ function getUniqueFiles(activities: FileActivity[]): Map<string, FileActivity> {
 
 /** Check if activity is recent (within 5 minutes) */
 function isRecent(timestamp: number): boolean {
-  return Date.now() - timestamp < 5 * 60 * 1000;
+  const currentTime = new Date().getTime();
+  return currentTime - timestamp < 5 * 60 * 1000;
 }
 
 /**

@@ -95,7 +95,8 @@ export function ExecutionTerminal({ className, defaultAgent = "sam" }: Execution
   const status = useMemo<ExecutionStatus>(() => {
     if (!logs || logs.length === 0) return "idle";
 
-    const recentLogs = logs.filter(l => Date.now() - l.timestamp < 30000); // Last 30 sec
+    const currentTime = new Date().getTime();
+    const recentLogs = logs.filter(l => currentTime - l.timestamp < 30000); // Last 30 sec
     if (recentLogs.length === 0) return "idle";
 
     const hasError = recentLogs.some(l => l.level === "error");

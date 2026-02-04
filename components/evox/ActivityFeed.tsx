@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { formatDistanceToNow } from "date-fns";
@@ -54,6 +55,12 @@ const eventVerbs: Record<string, string> = {
  * Subscribes to Convex activityEvents with real-time updates
  */
 export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
+  // Capture current time once on mount for stable comparison
+  const [now, setNow] = useState<number>(0);
+  useEffect(() => {
+    setNow(Date.now());
+  }, []);
+
   // Real-time subscription to activity events
   const events = useQuery(api.activityEvents.list, { limit });
 
@@ -122,7 +129,7 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
 
             {/* Timestamp */}
             <span className="shrink-0 text-[10px] text-[#555555]">
-              {formatDistanceToNow(event.timestamp ?? Date.now(), { addSuffix: false })}
+              {formatDistanceToNow(event.timestamp ?? now, { addSuffix: false })}
             </span>
           </div>
         );

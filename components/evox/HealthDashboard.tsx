@@ -39,7 +39,7 @@ const UPTIME_WARNING = 90;
 /** Calculate uptime percentage based on heartbeat frequency */
 function calculateUptime(lastHeartbeat: number | undefined, periodMs: number): number {
   if (!lastHeartbeat) return 0;
-  const now = Date.now();
+  const now = new Date().getTime();
   const elapsed = now - lastHeartbeat;
   // If last heartbeat is recent (within 15 min), assume 100% uptime
   if (elapsed < 15 * 60 * 1000) return 100;
@@ -131,7 +131,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
   const metrics = useMemo(() => {
     if (!tasks || !agents) return null;
 
-    const now = Date.now();
+    const now = new Date().getTime();
     const day24h = 24 * 60 * 60 * 1000;
     const day7 = 7 * day24h;
     const day30 = 30 * day24h;
@@ -258,7 +258,7 @@ export function HealthDashboard({ className }: HealthDashboardProps) {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold text-white">System Health</h2>
         <span className="text-xs text-[#555555]">
-          Last updated {formatDistanceToNow(Date.now(), { addSuffix: true })}
+          Last updated {formatDistanceToNow(new Date().getTime(), { addSuffix: true })}
         </span>
       </div>
 

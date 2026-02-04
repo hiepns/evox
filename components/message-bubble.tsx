@@ -23,7 +23,7 @@ export function MessageBubble({
   timestamp,
 }: MessageBubbleProps) {
   const formatTime = (date: Date) => {
-    const now = Date.now();
+    const now = new Date().getTime();
     const diff = now - date.getTime();
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(minutes / 60);

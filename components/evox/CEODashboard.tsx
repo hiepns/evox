@@ -103,10 +103,11 @@ function MetricCard({
 
 /** Agent Status Badge */
 function AgentBadge({ agent }: { agent: AgentDoc }) {
+  const currentTime = new Date().getTime();
   const status = agent.status?.toLowerCase() || "offline";
   const lastSeen = agent.lastSeen || agent.lastHeartbeat || 0;
   const isOnline = status === "online" || status === "busy";
-  const isRecent = Date.now() - lastSeen < 5 * 60 * 1000; // 5 min
+  const isRecent = currentTime - lastSeen < 5 * 60 * 1000; // 5 min
 
   const statusColors = {
     online: { bg: "bg-emerald-500/20", border: "border-emerald-500", text: "text-emerald-400" },

@@ -57,11 +57,11 @@ type AgentDoc = {
 export function AutomationDashboard({ className }: AutomationDashboardProps) {
   const { isViewerMode } = useViewerMode();
   const [timeRange, setTimeRange] = useState<TimeRange>("24h");
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => new Date().getTime());
 
   // Update "now" every minute for countdown timers
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
+    const interval = setInterval(() => setNow(new Date().getTime()), 60000);
     return () => clearInterval(interval);
   }, []);
 

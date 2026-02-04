@@ -200,7 +200,7 @@ export const handleFailure = internalMutation({
     const now = Date.now();
 
     // Create alert
-    await ctx.db.insert("alerts", {
+    const alertId = await ctx.db.insert("alerts", {
       type: "agent_failed",
       severity: "critical",
       channel: "telegram",
@@ -216,15 +216,20 @@ export const handleFailure = internalMutation({
       deployBlocked: true,
     });
 
-    // Trigger telegram alert
-    // TODO(Sam): Fix sendTelegramAlert args - requires alertId, chatId, severity
-    // await ctx.scheduler.runAfter(0, internal.alerts.sendTelegramAlert, {
-    //   alertId: ...,
-    //   chatId: ...,
-    //   title: "🚨 QA Failed: Deploy Blocked",
-    //   message: `Failed tests: ${failedTests}\n${commitHash ? `Commit: ${commitHash.slice(0, 7)}` : ""}`,
-    //   severity: "critical",
-    // });
+    // Get chat ID from preferences or env
+    const globalPrefs = await ctx.runQuery(api.alerts.getPreferences, { target: "global" });
+    const chatId = globalPrefs?.telegramChatId || process.env.TELEGRAM_CHAT_ID || "";
+
+    // Trigger telegram alert if chatId available
+    if (chatId) {
+      await ctx.scheduler.runAfter(0, internal.alerts.sendTelegramAlert, {
+        alertId,
+        chatId,
+        title: "🚨 QA Failed: Deploy Blocked",
+        message: `Failed tests: ${failedTests}\n${commitHash ? `Commit: ${commitHash.slice(0, 7)}` : ""}`,
+        severity: "critical",
+      });
+    }
   },
 });
 

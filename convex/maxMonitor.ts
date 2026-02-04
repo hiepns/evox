@@ -154,7 +154,7 @@ export const triggerAlert = internalMutation({
   args: {},
   handler: async (ctx, { title, message }: { title: string; message: string }) => {
     // Create alert in alerts table
-    await ctx.db.insert("alerts", {
+    const alertId = await ctx.db.insert("alerts", {
       type: "agent_stuck",
       severity: "critical",
       channel: "telegram",
@@ -164,15 +164,20 @@ export const triggerAlert = internalMutation({
       createdAt: Date.now(),
     });
 
-    // Trigger Telegram notification
-    // TODO(Sam): Fix sendTelegramAlert args - requires alertId, chatId, severity
-    // await ctx.scheduler.runAfter(0, internal.alerts.sendTelegramAlert, {
-    //   alertId: ...,
-    //   chatId: ...,
-    //   title,
-    //   message,
-    //   severity: "critical",
-    // });
+    // Get chat ID from preferences or env
+    const globalPrefs = await ctx.runQuery(api.alerts.getPreferences, { target: "global" });
+    const chatId = globalPrefs?.telegramChatId || process.env.TELEGRAM_CHAT_ID || "";
+
+    // Trigger Telegram notification if chatId available
+    if (chatId) {
+      await ctx.scheduler.runAfter(0, internal.alerts.sendTelegramAlert, {
+        alertId,
+        chatId,
+        title,
+        message,
+        severity: "critical",
+      });
+    }
   },
 });
 

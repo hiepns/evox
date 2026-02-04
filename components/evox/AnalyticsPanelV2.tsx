@@ -54,7 +54,7 @@ export function AnalyticsPanelV2({ className }: AnalyticsPanelV2Props) {
 
   // Get time range based on filter
   const timeRange = useMemo(() => {
-    const now = Date.now();
+    const now = new Date().getTime();
     const today = startOfDay(new Date());
     switch (timeFilter) {
       case "today":
@@ -80,7 +80,7 @@ export function AnalyticsPanelV2({ className }: AnalyticsPanelV2Props) {
   const metrics = useMemo(() => {
     if (!tasks || !agents) return null;
 
-    const now = Date.now();
+    const now = new Date().getTime();
 
     // Filter tasks by time range
     const filteredTasks = tasks.filter((t) => {

@@ -56,7 +56,7 @@ export function NotificationItem({
   const Icon = typeIcons[type] ?? MessageCircle;
 
   const formatTime = (date: Date | number) => {
-    const now = Date.now();
+    const now = new Date().getTime();
     const ts = typeof date === "number" ? date : date.getTime();
     const diff = now - ts;
     const minutes = Math.floor(diff / 60000);

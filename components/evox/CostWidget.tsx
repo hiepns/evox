@@ -29,7 +29,6 @@ export function CostWidget({ className, budget = 100 }: CostWidgetProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("7days");
 
   const days = timeFilter === "7days" ? 7 : 30;
-  const now = Date.now();
   const startTs = startOfDay(subDays(new Date(), days - 1)).getTime();
   const endTs = endOfDay(new Date()).getTime();
 

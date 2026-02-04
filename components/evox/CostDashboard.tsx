@@ -30,7 +30,6 @@ export function CostDashboard({
 }: CostDashboardProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("7days");
 
-  const now = Date.now();
   const days = timeFilter === "today" ? 1 : timeFilter === "7days" ? 7 : 30;
   const startTs = startOfDay(subDays(new Date(), days - 1)).getTime();
   const endTs = endOfDay(new Date()).getTime();
