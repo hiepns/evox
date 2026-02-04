@@ -21,6 +21,7 @@ import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as dispatches from "../dispatches.js";
 import type * as documents from "../documents.js";
+import type * as execution from "../execution.js";
 import type * as heartbeat from "../heartbeat.js";
 import type * as http from "../http.js";
 import type * as linearSync from "../linearSync.js";
@@ -59,6 +60,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   dispatches: typeof dispatches;
   documents: typeof documents;
+  execution: typeof execution;
   heartbeat: typeof heartbeat;
   http: typeof http;
   linearSync: typeof linearSync;

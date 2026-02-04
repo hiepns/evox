@@ -391,4 +391,54 @@ export default defineSchema({
     .index("by_agent", ["agentId", "timestamp"])
     .index("by_task", ["taskId", "timestamp"])
     .index("by_type", ["eventType", "timestamp"]),
+
+  // AGT-197: Execution Visibility - File Activity Tracking
+  // Tracks file reads/writes during agent execution for transparency
+  fileActivity: defineTable({
+    agentName: v.string(),                    // "sam", "leo", "max"
+    filePath: v.string(),                     // Relative path: "convex/schema.ts"
+    action: v.union(
+      v.literal("read"),
+      v.literal("write"),
+      v.literal("create"),
+      v.literal("delete")
+    ),
+    taskId: v.optional(v.id("tasks")),        // Related task if any
+    linearIdentifier: v.optional(v.string()), // "AGT-197" for display
+    linesChanged: v.optional(v.number()),     // For write actions
+    timestamp: v.number(),
+  })
+    .index("by_agent", ["agentName", "timestamp"])
+    .index("by_file", ["filePath", "timestamp"])
+    .index("by_task", ["taskId", "timestamp"])
+    .index("by_timestamp", ["timestamp"]),
+
+  // AGT-197: Execution Visibility - Execution Logs
+  // Detailed logs from agent execution for debugging and audit
+  executionLogs: defineTable({
+    agentName: v.string(),                    // "sam", "leo", "max"
+    sessionId: v.optional(v.string()),        // Group logs by session
+    level: v.union(
+      v.literal("debug"),
+      v.literal("info"),
+      v.literal("warn"),
+      v.literal("error")
+    ),
+    message: v.string(),
+    taskId: v.optional(v.id("tasks")),
+    linearIdentifier: v.optional(v.string()),
+    metadata: v.optional(v.object({
+      command: v.optional(v.string()),        // CLI command executed
+      exitCode: v.optional(v.number()),       // Command exit code
+      duration: v.optional(v.number()),       // Execution time in ms
+      filesAffected: v.optional(v.array(v.string())),
+      error: v.optional(v.string()),          // Error details
+    })),
+    timestamp: v.number(),
+  })
+    .index("by_agent", ["agentName", "timestamp"])
+    .index("by_session", ["sessionId", "timestamp"])
+    .index("by_level", ["level", "timestamp"])
+    .index("by_task", ["taskId", "timestamp"])
+    .index("by_timestamp", ["timestamp"]),
 });
