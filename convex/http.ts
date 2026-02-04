@@ -114,7 +114,12 @@ http.route({
 
 /**
  * POST /webhook/linear — Handle Linear issue updates
- * Syncs status changes and creates dispatches for new assignments
+ * Syncs status changes and creates dispatches for new/assigned issues
+ *
+ * Auto-dispatch triggers:
+ * 1. New issue created with assignee = Sam/Leo
+ * 2. Existing issue assigned to Sam/Leo
+ * 3. Issue moved to "Todo" or "In Progress" with Sam/Leo assignee
  */
 http.route({
   path: "/webhook/linear",
@@ -122,6 +127,23 @@ http.route({
   handler: httpAction(async (ctx, request) => {
     try {
       const body = await request.json();
+      const AGENTS = ["SAM", "LEO"];
+      let dispatched = false;
+
+      // Helper to create dispatch
+      const tryDispatch = async (assigneeName: string, identifier: string, title: string, description: string) => {
+        const normalizedName = assigneeName?.toUpperCase();
+        if (normalizedName && AGENTS.includes(normalizedName)) {
+          await ctx.runMutation(api.dispatches.createFromLinear, {
+            agentName: normalizedName,
+            linearIdentifier: identifier,
+            title,
+            description: description || "",
+          });
+          return true;
+        }
+        return false;
+      };
 
       // Handle issue updates
       if (body.type === "Issue" && body.action === "update") {
@@ -132,23 +154,49 @@ http.route({
             status: body.data.state.name,
           });
         }
-      }
 
-      // Handle new issues — create dispatch if assigned to known agent
-      if (body.type === "Issue" && body.action === "create") {
-        const assigneeName = body.data.assignee?.name?.toUpperCase();
-        if (assigneeName && ["SAM", "LEO", "MAX"].includes(assigneeName)) {
-          await ctx.runMutation(api.dispatches.createFromLinear, {
-            agentName: assigneeName,
-            linearIdentifier: body.data.identifier,
-            title: body.data.title,
-            description: body.data.description || "",
-          });
+        // Auto-dispatch on assignee change
+        if (body.updatedFrom?.assigneeId !== undefined) {
+          dispatched = await tryDispatch(
+            body.data.assignee?.name,
+            body.data.identifier,
+            body.data.title,
+            body.data.description
+          );
+        }
+
+        // Auto-dispatch when moved to Todo/In Progress with agent assignee
+        if (body.updatedFrom?.stateId !== undefined) {
+          const newState = body.data.state?.name?.toLowerCase();
+          if (newState === "todo" || newState === "in progress") {
+            dispatched = await tryDispatch(
+              body.data.assignee?.name,
+              body.data.identifier,
+              body.data.title,
+              body.data.description
+            );
+          }
         }
       }
 
+      // Handle new issues — create dispatch if assigned to agent
+      if (body.type === "Issue" && body.action === "create") {
+        dispatched = await tryDispatch(
+          body.data.assignee?.name,
+          body.data.identifier,
+          body.data.title,
+          body.data.description
+        );
+      }
+
       return new Response(
-        JSON.stringify({ received: true, type: body.type, action: body.action }),
+        JSON.stringify({
+          received: true,
+          type: body.type,
+          action: body.action,
+          dispatched,
+          identifier: body.data?.identifier,
+        }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       );
     } catch (error) {
