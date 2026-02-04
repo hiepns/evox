@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ActivityPage } from "./activity-page";
+import { FileActivityMatrix } from "@/components/evox/FileActivityMatrix";
 import { cn } from "@/lib/utils";
 
 interface ActivityDrawerProps {
@@ -9,8 +10,12 @@ interface ActivityDrawerProps {
   onClose: () => void;
 }
 
+type DrawerTab = "activity" | "files";
+
 /** AGT-181: Activity Drawer — slides from right, triggered by bell icon */
 export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
+  const [activeTab, setActiveTab] = useState<DrawerTab>("activity");
+
   useEffect(() => {
     if (!open) return;
     const handleEscape = (e: KeyboardEvent) => {
@@ -40,10 +45,30 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
         aria-labelledby="activity-drawer-title"
       >
         <div className="flex h-full flex-col">
+          {/* Header with tabs */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-3">
-            <h2 id="activity-drawer-title" className="text-xs font-medium tracking-widest uppercase text-white/40">
-              Activity
-            </h2>
+            <div className="flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => setActiveTab("activity")}
+                className={cn(
+                  "text-xs font-medium tracking-widest uppercase transition-colors",
+                  activeTab === "activity" ? "text-white" : "text-white/40 hover:text-white/60"
+                )}
+              >
+                Activity
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("files")}
+                className={cn(
+                  "text-xs font-medium tracking-widest uppercase transition-colors",
+                  activeTab === "files" ? "text-white" : "text-white/40 hover:text-white/60"
+                )}
+              >
+                Files
+              </button>
+            </div>
             <button
               type="button"
               onClick={onClose}
@@ -53,8 +78,16 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
               ✕
             </button>
           </div>
+
+          {/* Content */}
           <div className="flex-1 min-h-0 overflow-hidden">
-            <ActivityPage />
+            {activeTab === "activity" ? (
+              <ActivityPage />
+            ) : (
+              <div className="h-full p-3 overflow-auto">
+                <FileActivityMatrix className="h-full" />
+              </div>
+            )}
           </div>
         </div>
       </div>
