@@ -1,0 +1,275 @@
+// ============================================================
+// EVOX Engine Core — Execution Engine
+// convex/execution/engine.ts
+//
+// Step-based execution loop:
+//   Each step = 1 Claude API call + tool execution
+//   State saved in DB between steps
+//   ctx.scheduler.runAfter(0, nextStep) chains steps
+// ============================================================
+
+"use node";
+
+import { v } from "convex/values";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "../_generated/server";
+import { internal } from "../_generated/api";
+import { Id } from "../_generated/dataModel";
+import { AGENT_SOULS, buildSystemPrompt, buildUserMessage, getRepoContext } from "./context";
+import { GITHUB_TOOLS, executeTool, ToolCallBlock } from "./tools";
+import { GitHubConfig } from "./github";
+
+const DEFAULT_MODEL = "claude-sonnet-4-5-20250929";
+const MAX_STEPS = 50;
+const MAX_TOKENS_PER_STEP = 8096;
+
+// ---- Queries ----
+
+export const getExecution = query({
+  args: { executionId: v.id("executions") },
+  handler: async (ctx, { executionId }) => ctx.db.get(executionId),
+});
+
+export const getExecutionLogs = query({
+  args: { executionId: v.id("executions"), limit: v.optional(v.number()) },
+  handler: async (ctx, { executionId, limit }) => {
+    const logs = await ctx.db.query("engineLogs")
+      .withIndex("by_execution", (q) => q.eq("executionId", executionId))
+      .order("desc").take(limit ?? 100);
+    return logs.reverse();
+  },
+});
+
+export const listExecutions = query({
+  args: { status: v.optional(v.string()), limit: v.optional(v.number()) },
+  handler: async (ctx, { status, limit }) => {
+    const results = await ctx.db.query("executions").order("desc").take(limit ?? 20);
+    return status ? results.filter((e) => e.status === status) : results;
+  },
+});
+
+// ---- Mutations ----
+
+export const createExecution = internalMutation({
+  args: {
+    taskId: v.string(), agentId: v.id("agents"), agentName: v.string(),
+    model: v.string(), repo: v.string(), branch: v.string(), initialMessages: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return ctx.db.insert("executions", {
+      taskId: args.taskId, agentId: args.agentId, agentName: args.agentName,
+      status: "running", messages: args.initialMessages,
+      stagedChanges: JSON.stringify({}), currentStep: 0, maxSteps: MAX_STEPS,
+      startedAt: Date.now(), tokensUsed: 0, filesChanged: [],
+      model: args.model, repo: args.repo, branch: args.branch,
+    });
+  },
+});
+
+export const updateExecutionStep = internalMutation({
+  args: {
+    executionId: v.id("executions"), messages: v.string(),
+    stagedChanges: v.string(), currentStep: v.number(),
+    tokensUsed: v.number(), filesChanged: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.executionId, {
+      messages: args.messages, stagedChanges: args.stagedChanges,
+      currentStep: args.currentStep, tokensUsed: args.tokensUsed,
+      filesChanged: args.filesChanged,
+    });
+  },
+});
+
+export const completeExecution = internalMutation({
+  args: {
+    executionId: v.id("executions"),
+    status: v.union(v.literal("done"), v.literal("failed"), v.literal("stopped")),
+    commitSha: v.optional(v.string()), error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.executionId, {
+      status: args.status, completedAt: Date.now(),
+      commitSha: args.commitSha, error: args.error,
+    });
+  },
+});
+
+export const writeLog = internalMutation({
+  args: {
+    executionId: v.id("executions"), step: v.number(),
+    type: v.union(
+      v.literal("system"), v.literal("thinking"), v.literal("tool_call"),
+      v.literal("tool_result"), v.literal("message"), v.literal("error"), v.literal("commit")
+    ),
+    content: v.string(), metadata: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("engineLogs", {
+      executionId: args.executionId, timestamp: Date.now(),
+      step: args.step, type: args.type, content: args.content, metadata: args.metadata,
+    });
+  },
+});
+
+// ---- Entry Point ----
+
+export const startExecution = action({
+  args: {
+    taskId: v.string(), agentName: v.string(), taskTitle: v.string(),
+    taskDescription: v.string(), taskPriority: v.optional(v.string()),
+    taskLabels: v.optional(v.array(v.string())),
+    model: v.optional(v.string()), branch: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const agentKey = args.agentName.toLowerCase();
+    const soul = AGENT_SOULS[agentKey];
+    if (!soul) throw new Error(`Unknown agent: ${args.agentName}`);
+
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const ghToken = process.env.GITHUB_TOKEN;
+    const ghOwner = process.env.GITHUB_OWNER;
+    const ghRepo = process.env.GITHUB_REPO;
+    if (!apiKey) throw new Error("ANTHROPIC_API_KEY not set");
+    if (!ghToken) throw new Error("GITHUB_TOKEN not set");
+    if (!ghOwner) throw new Error("GITHUB_OWNER not set");
+    if (!ghRepo) throw new Error("GITHUB_REPO not set");
+
+    const branch = args.branch ?? "main";
+    const model = args.model ?? DEFAULT_MODEL;
+    const task = { id: args.taskId, title: args.taskTitle, description: args.taskDescription, priority: args.taskPriority ?? "Medium", labels: args.taskLabels ?? [] };
+    const repoCtx = getRepoContext(ghOwner, ghRepo, branch);
+    const systemPrompt = buildSystemPrompt(soul, task, repoCtx);
+    const initialMessages = [{ role: "user", content: buildUserMessage(task) }];
+
+    const agentId = await ctx.runQuery(internal.execution.engine.findAgentByName, { name: agentKey });
+    if (!agentId) throw new Error(`Agent "${args.agentName}" not found in agents table`);
+
+    const executionId: Id<"executions"> = await ctx.runMutation(internal.execution.engine.createExecution, {
+      taskId: args.taskId, agentId, agentName: soul.name, model,
+      repo: `${ghOwner}/${ghRepo}`, branch, initialMessages: JSON.stringify(initialMessages),
+    });
+
+    await ctx.runMutation(internal.execution.engine.writeLog, {
+      executionId, step: 0, type: "system",
+      content: `🚀 Starting execution: ${args.taskId} with agent ${soul.name}`,
+      metadata: JSON.stringify({ model, repo: `${ghOwner}/${ghRepo}`, branch }),
+    });
+
+    await ctx.scheduler.runAfter(0, internal.execution.engine.executeStep, { executionId, systemPrompt });
+    return { executionId, status: "started" };
+  },
+});
+
+// ---- Step Execution ----
+
+export const executeStep = internalAction({
+  args: { executionId: v.id("executions"), systemPrompt: v.string() },
+  handler: async (ctx, { executionId, systemPrompt }) => {
+    const execution = await ctx.runQuery(internal.execution.engine.getExecutionInternal, { executionId });
+    if (!execution) throw new Error(`Execution ${executionId} not found`);
+
+    if (execution.status !== "running") {
+      await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step: execution.currentStep, type: "system", content: `⏹️ Execution ${execution.status}. Halting.` });
+      return;
+    }
+
+    if (execution.currentStep >= execution.maxSteps) {
+      await ctx.runMutation(internal.execution.engine.completeExecution, { executionId, status: "failed", error: `Max steps reached (${execution.maxSteps})` });
+      await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step: execution.currentStep, type: "error", content: `❌ Max steps reached.` });
+      return;
+    }
+
+    const step = execution.currentStep + 1;
+    const messages = JSON.parse(execution.messages || "[]");
+    const stagedChanges = new Map<string, string>(Object.entries(JSON.parse(execution.stagedChanges || "{}")));
+
+    const apiKey = process.env.ANTHROPIC_API_KEY!;
+    const ghConfig: GitHubConfig = { token: process.env.GITHUB_TOKEN!, owner: process.env.GITHUB_OWNER!, repo: process.env.GITHUB_REPO!, branch: execution.branch };
+
+    try {
+      await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "system", content: `🔄 Step ${step}: Calling Claude API...` });
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({ model: execution.model, max_tokens: MAX_TOKENS_PER_STEP, system: systemPrompt, messages, tools: GITHUB_TOOLS }),
+      });
+
+      if (!response.ok) { const errBody = await response.text(); throw new Error(`Claude API ${response.status}: ${errBody}`); }
+      const data = await response.json();
+
+      const inputTokens = data.usage?.input_tokens ?? 0;
+      const outputTokens = data.usage?.output_tokens ?? 0;
+      const newTotalTokens = execution.tokensUsed + inputTokens + outputTokens;
+
+      let taskComplete = false;
+      const toolResults: any[] = [];
+
+      for (const block of data.content) {
+        if (block.type === "text" && block.text) {
+          await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "message", content: block.text });
+        }
+        if (block.type === "tool_use") {
+          await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "tool_call", content: `🔧 ${block.name}(${JSON.stringify(block.input).slice(0, 200)})`, metadata: JSON.stringify({ tool: block.name, input: block.input }) });
+          if (block.name === "task_complete") taskComplete = true;
+          const result = await executeTool(block as ToolCallBlock, ghConfig, stagedChanges);
+          await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "tool_result", content: result.content.slice(0, 500), metadata: JSON.stringify({ tool: block.name, is_error: result.is_error ?? false }) });
+          toolResults.push(result);
+        }
+      }
+
+      messages.push({ role: "assistant", content: data.content });
+      if (toolResults.length > 0) messages.push({ role: "user", content: toolResults });
+
+      const filesChanged = Array.from(stagedChanges.keys());
+      await ctx.runMutation(internal.execution.engine.updateExecutionStep, {
+        executionId, messages: JSON.stringify(messages), stagedChanges: JSON.stringify(Object.fromEntries(stagedChanges)),
+        currentStep: step, tokensUsed: newTotalTokens, filesChanged,
+      });
+
+      if (taskComplete || data.stop_reason === "end_turn") {
+        await ctx.runMutation(internal.execution.engine.completeExecution, { executionId, status: "done" });
+        await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "system", content: `✅ Complete! ${filesChanged.length} files staged. Tokens: ${newTotalTokens}`, metadata: JSON.stringify({ filesChanged, tokensUsed: newTotalTokens }) });
+        return;
+      }
+
+      if (data.stop_reason === "tool_use" || toolResults.length > 0) {
+        await ctx.scheduler.runAfter(0, internal.execution.engine.executeStep, { executionId, systemPrompt });
+      } else {
+        await ctx.runMutation(internal.execution.engine.completeExecution, { executionId, status: "done" });
+        await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "system", content: `✅ Done (stop_reason: ${data.stop_reason}). ${filesChanged.length} files staged.` });
+      }
+    } catch (error: any) {
+      await ctx.runMutation(internal.execution.engine.writeLog, { executionId, step, type: "error", content: `❌ Error: ${error.message}` });
+      await ctx.runMutation(internal.execution.engine.completeExecution, { executionId, status: "failed", error: error.message });
+    }
+  },
+});
+
+// ---- Internal Queries ----
+
+export const findAgentByName = internalQuery({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const agents = await ctx.db.query("agents").collect();
+    return agents.find((a) => a.name?.toLowerCase() === name.toLowerCase())?._id ?? null;
+  },
+});
+
+export const getExecutionInternal = internalQuery({
+  args: { executionId: v.id("executions") },
+  handler: async (ctx, { executionId }) => ctx.db.get(executionId),
+});
+
+// ---- Stop Execution (stub — Session 3D) ----
+
+export const stopExecution = mutation({
+  args: { executionId: v.id("executions") },
+  handler: async (ctx, { executionId }) => {
+    const execution = await ctx.db.get(executionId);
+    if (!execution) throw new Error("Execution not found");
+    if (execution.status !== "running") throw new Error(`Cannot stop: ${execution.status}`);
+    await ctx.db.patch(executionId, { status: "stopped" });
+    return { success: true };
+  },
+});

@@ -1141,4 +1141,57 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
+
+  // AGT-92: Execution Engine Core — Track execution runs
+  executions: defineTable({
+    taskId: v.string(), // Linear issue ID e.g. "AGT-89"
+    agentId: v.id("agents"), // Reference to agents table
+    agentName: v.string(), // "Sam", "Leo" for display
+    status: v.union(
+      v.literal("running"),
+      v.literal("paused"),
+      v.literal("done"),
+      v.literal("failed"),
+      v.literal("stopped")
+    ),
+    // Execution state for step-based resumption
+    messages: v.optional(v.string()), // JSON stringified message history
+    stagedChanges: v.optional(v.string()), // JSON stringified Map<path, content>
+    currentStep: v.number(), // Current tool loop iteration
+    maxSteps: v.number(), // Safety limit (default 50)
+    // Metadata
+    startedAt: v.number(),
+    completedAt: v.optional(v.number()),
+    tokensUsed: v.number(),
+    filesChanged: v.array(v.string()),
+    commitSha: v.optional(v.string()),
+    error: v.optional(v.string()),
+    // Config
+    model: v.string(), // "claude-sonnet-4-5-20250929"
+    repo: v.string(), // "owner/repo"
+    branch: v.string(), // "main"
+  })
+    .index("by_status", ["status"])
+    .index("by_taskId", ["taskId"])
+    .index("by_agentId", ["agentId"]),
+
+  // AGT-92: Execution Engine Core — Real-time execution step logs
+  engineLogs: defineTable({
+    executionId: v.id("executions"),
+    timestamp: v.number(),
+    step: v.number(),
+    type: v.union(
+      v.literal("system"),
+      v.literal("thinking"),
+      v.literal("tool_call"),
+      v.literal("tool_result"),
+      v.literal("message"),
+      v.literal("error"),
+      v.literal("commit")
+    ),
+    content: v.string(),
+    metadata: v.optional(v.string()),
+  })
+    .index("by_execution", ["executionId", "timestamp"])
+    .index("by_execution_step", ["executionId", "step"]),
 });
