@@ -186,8 +186,27 @@ export const completeTask = mutation({
     if (args.action === "completed") {
       await updateWorkingMemoryOnComplete(ctx, agentId, task.linearIdentifier ?? args.ticket, args.summary);
       await logToDailyNotes(ctx, agentId, "completed", task.linearIdentifier ?? args.ticket, args.summary);
+
+      // AGT-242: Record performance metrics for task completion
+      // Calculate duration if we have completedAt and task start timestamp
+      let durationMinutes: number | undefined;
+      if (task.completedAt && task.createdAt) {
+        durationMinutes = Math.round((now - task.createdAt) / 1000 / 60);
+      }
+      await ctx.scheduler.runAfter(0, internal.performanceMetrics.recordTaskCompletion, {
+        agentName: args.agent,
+        taskId: task._id,
+        durationMinutes,
+        success: true,
+      });
     } else if (args.action === "in_progress") {
       await logToDailyNotes(ctx, agentId, "started", task.linearIdentifier ?? args.ticket, args.summary);
+
+      // AGT-242: Record task start for velocity tracking
+      await ctx.scheduler.runAfter(0, internal.performanceMetrics.recordTaskStart, {
+        agentName: args.agent,
+        taskId: task._id,
+      });
     }
 
     return {
@@ -712,6 +731,19 @@ export const reportFailure = mutation({
       taskId: task?._id,
       linearIdentifier: args.ticket,
       error: args.error,
+    });
+
+    // AGT-242: Record failed task for performance tracking
+    await ctx.scheduler.runAfter(0, internal.performanceMetrics.recordTaskCompletion, {
+      agentName: args.agent,
+      taskId: task?._id,
+      success: false,
+    });
+
+    // AGT-242: Record error in performance metrics
+    await ctx.scheduler.runAfter(0, internal.performanceMetrics.recordError, {
+      agentName: args.agent,
+      taskId: task?._id,
     });
 
     // Also log to daily notes

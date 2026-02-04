@@ -2807,3 +2807,186 @@ http.route({
     }
   }),
 });
+
+// ============================================================
+// AGT-242: PERFORMANCE METRICS ENDPOINTS
+// ============================================================
+
+/**
+ * GET /api/performance/agent?agent=sam&startDate=2026-02-04&endDate=2026-02-04
+ * Get performance metrics for a specific agent
+ */
+http.route({
+  path: "/api/performance/agent",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+      const startDate = url.searchParams.get("startDate") || undefined;
+      const endDate = url.searchParams.get("endDate") || undefined;
+      const limit = url.searchParams.get("limit");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const metrics = await ctx.runQuery(api.performanceMetrics.getAgentMetrics, {
+        agentName: agent,
+        startDate,
+        endDate,
+        limit: limit ? parseInt(limit, 10) : undefined,
+      });
+
+      return new Response(JSON.stringify({ agent, metrics }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get agent performance error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /api/performance/dashboard?date=2026-02-04
+ * Get aggregated metrics for all agents (dashboard overview)
+ */
+http.route({
+  path: "/api/performance/dashboard",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const date = url.searchParams.get("date") || undefined;
+
+      const metrics = await ctx.runQuery(api.performanceMetrics.getAllAgentsMetrics, {
+        date,
+      });
+
+      return new Response(JSON.stringify({ date, agents: metrics }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get dashboard metrics error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /api/performance/latest?agent=sam
+ * Get latest real-time metrics for an agent
+ */
+http.route({
+  path: "/api/performance/latest",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const metrics = await ctx.runQuery(api.performanceMetrics.getLatestMetrics, {
+        agentName: agent,
+      });
+
+      return new Response(JSON.stringify({ agent, metrics }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get latest metrics error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /api/performance/velocity?agent=sam&hours=24
+ * Get velocity trend (tasks per hour) over time
+ */
+http.route({
+  path: "/api/performance/velocity",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+      const hours = url.searchParams.get("hours");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const trend = await ctx.runQuery(api.performanceMetrics.getVelocityTrend, {
+        agentName: agent,
+        hours: hours ? parseInt(hours, 10) : undefined,
+      });
+
+      return new Response(JSON.stringify({ agent, trend }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get velocity trend error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /api/performance/costs?date=2026-02-04
+ * Get cost breakdown by agent
+ */
+http.route({
+  path: "/api/performance/costs",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const date = url.searchParams.get("date") || undefined;
+
+      const costs = await ctx.runQuery(api.performanceMetrics.getCostBreakdown, {
+        date,
+      });
+
+      return new Response(JSON.stringify({ date, costs }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get cost breakdown error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
