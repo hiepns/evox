@@ -18,6 +18,7 @@ import { AgentGrid } from "./AgentGrid";
 import { AlertsBanner } from "./AlertsBanner";
 import { ActivityFeed } from "./ActivityFeed";
 import { DispatchList } from "./DispatchList";
+import { AgentCommsWidget } from "./AgentCommsWidget";
 
 export function DashboardV2() {
   const status = useQuery(api.http.getStatus);
@@ -104,6 +105,11 @@ export function DashboardV2() {
       {/* Agent Grid */}
       <section className="mb-6">
         <AgentGrid agents={agents} />
+      </section>
+
+      {/* Agent Comms */}
+      <section className="mb-6">
+        <AgentCommsWidget limit={8} />
       </section>
 
       {/* Two-column layout for desktop */}

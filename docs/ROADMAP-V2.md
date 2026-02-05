@@ -35,9 +35,9 @@
 | 1.5 | Dashboard v0.2 - DispatchList | LEO | ✅ | AGT-314 |
 | 1.6 | Dashboard v0.2 - Assemble & deploy | LEO | ✅ | AGT-314 |
 | 1.7 | Heartbeat UI (green/red dots) | LEO | ✅ | AGT-273 |
-| 1.8 | Fix markDispatch POST APIs | SAM | ⬜ | AGT-306 |
+| 1.8 | Fix markDispatch POST APIs | SAM | ✅ | AGT-306 |
 | 1.9 | Reset circuit breakers (7 agents) | SAM | ⬜ | — |
-| 1.10 | Auto-detect blockers & escalate | SAM | ⬜ | AGT-278 |
+| 1.10 | Auto-detect blockers & escalate | MAX | 🔄 | AGT-278 |
 | 1.11 | Agent work-loop stable | SAM | ✅ | — |
 | 1.12 | Auto-restart on crash | SAM | ✅ | — |
 | 1.13 | Health monitoring API | SAM | ✅ | — |
@@ -51,7 +51,7 @@
 | 1.21 | API: getChannelMessagesWithKeywords | SAM | ✅ | — |
 | 1.22 | AgentCommsWidget (3-5 keywords) | LEO | 🔄 | — |
 
-**Phase 1 Progress: 13/22 = 59%**
+**Phase 1 Progress: 14/22 = 64%**
 
 ---
 
@@ -80,10 +80,10 @@
 | 2.17 | API documentation update | ALEX | ⬜ | AGT-296 |
 | 2.18 | Agent onboarding guide | ELLA | ⬜ | AGT-299 |
 | 2.19 | Alert design system | MAYA | ✅ | — |
-| 2.20 | Research self-healing patterns | COLE | 🔄 | — |
+| 2.20 | Research self-healing patterns | COLE | ✅ | — |
 | 2.21 | Priority voting design | MAX | ⬜ | AGT-284 |
 
-**Phase 2 Progress: 8/21 = 38%**
+**Phase 2 Progress: 9/21 = 43%**
 
 ---
 
