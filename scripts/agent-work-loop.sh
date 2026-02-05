@@ -48,6 +48,27 @@ RETRY_BACKOFF_MULTIPLIER=2  # Exponential backoff multiplier
 cd "$EVOX_DIR"
 mkdir -p "$EVOX_DIR/logs"
 
+# Health check file - external monitors can check this
+HEALTH_FILE="$EVOX_DIR/logs/health-$AGENT_LOWER.json"
+
+# Update health status (for external monitoring)
+update_health() {
+  local status="$1"
+  local cycle="$2"
+  echo "{\"agent\":\"$AGENT_UPPER\",\"status\":\"$status\",\"cycle\":$cycle,\"timestamp\":$(date +%s),\"pid\":$$}" > "$HEALTH_FILE"
+}
+
+# Log rotation - keep logs under 10MB
+rotate_logs() {
+  if [ -f "$LOG_FILE" ]; then
+    local size=$(stat -f%z "$LOG_FILE" 2>/dev/null || stat -c%s "$LOG_FILE" 2>/dev/null || echo "0")
+    if [ "$size" -gt 10485760 ]; then  # 10MB
+      mv "$LOG_FILE" "${LOG_FILE}.old"
+      log "📜 Log rotated (was ${size} bytes)"
+    fi
+  fi
+}
+
 log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
@@ -62,12 +83,44 @@ log "Poll interval: ${POLL_INTERVAL}s"
 log ""
 
 # ============================================================================
-# API FUNCTIONS (Using deployed endpoints)
+# API FUNCTIONS (Using deployed endpoints with retry)
 # ============================================================================
+
+# Retry wrapper for API calls (never give up on network)
+api_call_with_retry() {
+  local url="$1"
+  local method="${2:-GET}"
+  local data="${3:-}"
+  local max_retries=3
+  local retry=0
+
+  while [ $retry -lt $max_retries ]; do
+    local result
+    if [ "$method" = "POST" ]; then
+      result=$(curl -s -X POST "$url" -H "Content-Type: application/json" -d "$data" 2>/dev/null)
+    else
+      result=$(curl -s "$url" 2>/dev/null)
+    fi
+
+    # Check if we got a response
+    if [ -n "$result" ] && [ "$result" != "" ]; then
+      echo "$result"
+      return 0
+    fi
+
+    retry=$((retry + 1))
+    log "   ⚠️ API call failed, retry $retry/$max_retries..."
+    sleep $((retry * 2))
+  done
+
+  # Return fallback
+  echo '{"error":"network_failure"}'
+  return 1
+}
 
 # Get next pending dispatch for this agent
 get_next_dispatch() {
-  curl -s "$EVOX_API/getNextDispatchForAgent?agent=$AGENT_UPPER" 2>/dev/null || echo '{"dispatchId":null}'
+  api_call_with_retry "$EVOX_API/getNextDispatchForAgent?agent=$AGENT_UPPER"
 }
 
 # Mark dispatch as running (claim it)
@@ -203,10 +256,34 @@ is_claude_idle() {
 is_claude_stuck() {
   local output=$(get_tmux_output 20)
   # Check for error patterns
-  if [[ "$output" == *"Error:"* ]] || [[ "$output" == *"panic"* ]] || [[ "$output" == *"SIGTERM"* ]]; then
+  if [[ "$output" == *"Error:"* ]] || [[ "$output" == *"panic"* ]] || [[ "$output" == *"SIGTERM"* ]] || [[ "$output" == *"SIGKILL"* ]] || [[ "$output" == *"Connection refused"* ]]; then
     return 0
   fi
   return 1
+}
+
+# Force restart Claude (nuclear option for stuck agents)
+force_restart_claude() {
+  log "   🔥 Force restarting Claude..."
+
+  # Try graceful exit first
+  send_to_tmux "exit" 2>/dev/null || true
+  sleep 2
+
+  # Send Ctrl+C to kill any running process
+  tmux send-keys -t "$TMUX_SESSION" C-c 2>/dev/null || true
+  sleep 1
+
+  # Clear the pane
+  tmux send-keys -t "$TMUX_SESSION" "clear" Enter 2>/dev/null || true
+  sleep 1
+
+  # Start Claude fresh
+  send_to_tmux "claude"
+  sleep 5
+
+  log "   ✅ Claude restarted"
+  post_status "🔥 Force restarted Claude (was stuck)"
 }
 
 # Wait for Claude to become idle (task complete)
@@ -363,10 +440,29 @@ while true; do
     log "   ❌ Session check failed (${CONSECUTIVE_FAILURES}/${MAX_FAILURES})"
 
     if [ $CONSECUTIVE_FAILURES -ge $MAX_FAILURES ]; then
-      log "   🛑 Circuit breaker: Too many failures. Stopping."
+      log "   🛑 Circuit breaker: Too many failures. Attempting full recovery..."
       update_agent_status "offline"
-      post_status "🛑 Circuit breaker tripped after ${MAX_FAILURES} failures"
-      exit 1
+      post_status "🛑 Circuit breaker tripped. Attempting full recovery in 60s..."
+
+      # NEVER EXIT - Instead, wait and try full recovery
+      sleep 60
+
+      # Kill any existing tmux session and recreate
+      tmux kill-session -t "$TMUX_SESSION" 2>/dev/null || true
+      sleep 2
+
+      if create_session; then
+        log "   ✅ Full recovery successful! Resetting counters."
+        CONSECUTIVE_FAILURES=0
+        post_status "✅ Full recovery successful. Back online."
+        update_agent_status "online"
+      else
+        log "   ⚠️ Recovery failed. Will retry in 5 minutes..."
+        post_status "⚠️ Recovery failed. Retrying in 5 min..."
+        sleep 300
+        CONSECUTIVE_FAILURES=0  # Reset and try again
+      fi
+      continue  # NEVER EXIT
     fi
 
     sleep "$POLL_INTERVAL"

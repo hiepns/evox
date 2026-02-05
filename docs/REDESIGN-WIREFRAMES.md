@@ -2,6 +2,24 @@
 
 > **North Star:** CEO/COO reads and decides in 3 seconds.
 
+**Status:** 🟢 Core components shipped. MobileCEODashboard live on uat.
+
+---
+
+## The 3-Second Breakdown
+
+What CEO sees each second:
+
+| Second | What's Visible | Decision |
+|--------|----------------|----------|
+| **1** | 🟢/🟡/🔴 Hero Status | "Is everything OK?" |
+| **2** | Tasks + Cost metrics | "Are we productive?" |
+| **3** | Alert list (if any) | "What needs my action?" |
+
+**If GREEN:** CEO can close app. Team is working.
+**If YELLOW:** CEO scans alerts. Monitor situation.
+**If RED:** CEO takes action. Something needs fixing.
+
 ---
 
 ## Design Principles
@@ -274,12 +292,25 @@ function getHeroStatus(data) {
 
 ## Success Criteria
 
-- [ ] CEO can see system health in < 1 second
-- [ ] All critical alerts visible without scrolling
-- [ ] Works on iPhone SE (375px)
-- [ ] All interactive elements > 44px touch target
-- [ ] Page loads < 2 seconds on 3G
+- [x] CEO can see system health in < 1 second (HeroStatus shipped)
+- [x] All critical alerts visible without scrolling (AlertList shipped)
+- [x] Works on iPhone SE (375px) (MobileCEODashboard shipped)
+- [x] All interactive elements > 44px touch target (verified)
+- [ ] Page loads < 2 seconds on 3G (needs testing)
+
+---
+
+## Shipped Components
+
+| Component | File | Status |
+|-----------|------|--------|
+| HeroStatus | `components/evox/redesign/HeroStatus.tsx` | ✅ Shipped |
+| AlertList | `components/evox/redesign/AlertList.tsx` | ✅ Shipped |
+| MobileCEODashboard | `components/evox/redesign/MobileCEODashboard.tsx` | ✅ Shipped |
+| TeamStrip | — | 🔄 Inline in MobileCEODashboard |
+| MetricRow | — | 🔄 Inline in MobileCEODashboard |
 
 ---
 
 _Created by MAYA | Feb 5, 2026_
+_Last updated: Feb 5, 2026 - Components shipped to uat_
