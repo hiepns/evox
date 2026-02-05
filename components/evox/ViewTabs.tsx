@@ -16,12 +16,12 @@ const tabs: { id: MainViewTab; label: string; shortcut: string }[] = [
   { id: "kanban", label: "Kanban", shortcut: "⌘1" },
   { id: "terminal", label: "Terminal", shortcut: "⌘2" },
   { id: "queue", label: "Queue", shortcut: "⌘3" },
-  { id: "activity", label: "Activity", shortcut: "⌘4" },
+  { id: "activity", label: "Feed", shortcut: "⌘4" },
   { id: "health", label: "Health", shortcut: "⌘5" },
   { id: "automation", label: "Automation", shortcut: "⌘6" },
   { id: "messages", label: "Messages", shortcut: "⌘7" },
   { id: "comms", label: "Comms Log", shortcut: "⌘8" },
-  { id: "metrics", label: "Metrics", shortcut: "⌘9" },
+  { id: "metrics", label: "Stats", shortcut: "⌘9" },
 ];
 
 /**

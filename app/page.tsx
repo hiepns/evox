@@ -19,14 +19,14 @@ import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
 import { ExecutionTerminal } from "@/components/evox/ExecutionTerminal";
-import { ActivityFeed } from "@/components/evox/ActivityFeed";
 import { SystemPausedBanner } from "@/components/evox/KillSwitch";
 import { HealthDashboard } from "@/components/evox/HealthDashboard";
 import { AutomationDashboard } from "@/components/evox/AutomationDashboard";
 import { DirectMessagesView } from "@/components/evox/DirectMessagesView";
 import { CommunicationLog } from "@/components/evox/CommunicationLog";
-import { ElonDashboard } from "@/components/evox/ElonDashboard";
 import { CEODashboard } from "@/components/evox/CEODashboard";
+import { StatsPage } from "@/components/evox/StatsPage";
+import { RichActivityFeed } from "@/components/evox/RichActivityFeed";
 import { AgentsPage } from "@/components/dashboard-v2/agents-page";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
@@ -198,9 +198,7 @@ export default function Home() {
               </div>
             )}
             {activeViewTab === "activity" && (
-              <div className="h-full p-4 overflow-auto">
-                <ActivityFeed limit={50} className="h-full" />
-              </div>
+              <RichActivityFeed className="h-full" />
             )}
             {activeViewTab === "health" && (
               <HealthDashboard className="h-full" />
@@ -215,7 +213,7 @@ export default function Home() {
               <CommunicationLog className="h-full" />
             )}
             {activeViewTab === "metrics" && (
-              <ElonDashboard className="h-full" />
+              <StatsPage className="h-full" />
             )}
           </div>
         </main>
