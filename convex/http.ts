@@ -686,6 +686,66 @@ http.route({
   }),
 });
 
+// GET /getAgentStatuses - AGT-273: Get all agents with computed online/offline status
+http.route({
+  path: "/getAgentStatuses",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    try {
+      const statuses = await ctx.runQuery(api.agents.getAllAgentStatuses);
+      return new Response(JSON.stringify(statuses), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get agent statuses error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+// GET /getAgentStatus?name=sam - AGT-273: Get single agent status
+http.route({
+  path: "/getAgentStatus",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const name = url.searchParams.get("name");
+
+      if (!name) {
+        return new Response(
+          JSON.stringify({ error: "name query parameter is required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const status = await ctx.runQuery(api.agents.getAgentStatus, { name });
+
+      if (!status) {
+        return new Response(
+          JSON.stringify({ error: `Agent '${name}' not found` }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify(status), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("Get agent status error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
 // POST /api/linear-sync - Trigger Linear sync
 http.route({
   path: "/api/linear-sync",

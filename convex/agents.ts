@@ -249,3 +249,74 @@ export const remove = mutation({
     await ctx.db.delete(args.id);
   },
 });
+
+/**
+ * AGT-273: Get agent status with computed online/offline indicator
+ * Returns agent data + computed status based on heartbeat timeout:
+ * - online: last heartbeat < 15 min ago
+ * - offline: last heartbeat >= 15 min ago or no heartbeat
+ */
+export const getAgentStatus = query({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const agents = await ctx.db.query("agents").withIndex("by_name", (q) => q.eq("name", args.name.toLowerCase())).collect();
+    const agent = agents[0];
+
+    if (!agent) {
+      return null;
+    }
+
+    const now = Date.now();
+    const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+    // Compute status based on heartbeat
+    const lastHeartbeat = agent.lastHeartbeat ?? agent.lastSeen;
+    const msSinceHeartbeat = now - lastHeartbeat;
+    const computedStatus = msSinceHeartbeat < OFFLINE_THRESHOLD_MS ? "online" : "offline";
+
+    return {
+      _id: agent._id,
+      name: agent.name,
+      role: agent.role,
+      status: agent.status, // Manual/current status
+      computedStatus, // Computed from heartbeat
+      lastHeartbeat: agent.lastHeartbeat,
+      lastSeen: agent.lastSeen,
+      msSinceHeartbeat,
+      isOnline: computedStatus === "online",
+      currentTask: agent.currentTask,
+    };
+  },
+});
+
+/**
+ * AGT-273: Get all agents status with computed online/offline indicators
+ * For CEO Dashboard - shows which agents are truly online
+ */
+export const getAllAgentStatuses = query({
+  handler: async (ctx) => {
+    const agents = await ctx.db.query("agents").collect();
+    const now = Date.now();
+    const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+    return agents.map((agent) => {
+      const lastHeartbeat = agent.lastHeartbeat ?? agent.lastSeen;
+      const msSinceHeartbeat = now - lastHeartbeat;
+      const computedStatus = msSinceHeartbeat < OFFLINE_THRESHOLD_MS ? "online" : "offline";
+
+      return {
+        _id: agent._id,
+        name: agent.name,
+        role: agent.role,
+        avatar: agent.avatar,
+        status: agent.status,
+        computedStatus,
+        lastHeartbeat: agent.lastHeartbeat,
+        lastSeen: agent.lastSeen,
+        msSinceHeartbeat,
+        isOnline: computedStatus === "online",
+        currentTask: agent.currentTask,
+      };
+    });
+  },
+});
