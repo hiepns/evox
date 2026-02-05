@@ -62,3 +62,25 @@ grep -rE "(api_key|token|secret|password).*=" --include="*.sh" --include="*.ts" 
 
 **Rule:** [Rule mới để tránh lặp lại]
 ```
+
+### 2026-02-05: Verify sau khi gửi task
+
+**Context:** EVOX báo "đã giao việc" nhưng agents không chạy vì thiếu Enter.
+
+**Sai:** `tmux send-keys "task" Enter` rồi báo done ngay.
+
+**Đúng:** Gửi task → đợi → verify agent đang "thinking/working" → mới báo done.
+
+**Solution:** Tạo `scripts/send-task.sh` với verification built-in.
+
+---
+
+### 2026-02-05: Agent-specific boot files
+
+**Context:** Boot prompt cho COLE lại ghi "You are MAX" vì dùng chung 1 file.
+
+**Sai:** Ghi đè `boot-prompt.md` cho mọi agent.
+
+**Đúng:** Tạo `boot-prompt-{agent}.md` riêng cho từng agent.
+
+**Rule:** Mỗi agent cần file context riêng, không dùng chung.
