@@ -4,6 +4,13 @@
 
 Agents can call these HTTP endpoints directly using `curl` to see system state and coordinate.
 
+## 🔐 Security Note
+
+- **API keys are in `.env.local`** — never log or commit them
+- Agents in the team can share access to Convex endpoints (no auth needed)
+- External APIs (Linear, GitHub) use keys from environment variables
+- **Never expose keys in messages, logs, or docs**
+
 ---
 
 ## 🔍 Visibility (Self-Service)

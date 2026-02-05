@@ -86,10 +86,13 @@ interface CommentItemProps {
   comment: TaskComment;
   onReply: (commentId: string, agentName: string) => void;
   isReply?: boolean;
+  replyCount?: number;
+  isExpanded?: boolean;
+  onToggleReplies?: () => void;
 }
 
 /** Individual comment card */
-function CommentItem({ comment, onReply, isReply }: CommentItemProps) {
+function CommentItem({ comment, onReply, isReply, replyCount, isExpanded, onToggleReplies }: CommentItemProps) {
   return (
     <div className={cn(
       "flex gap-3 rounded-lg border border-[#222] bg-[#0f0f0f] p-4 hover:border-[#333] transition-colors",
@@ -114,13 +117,25 @@ function CommentItem({ comment, onReply, isReply }: CommentItemProps) {
               {comment.createdAt ? formatDistanceToNow(comment.createdAt, { addSuffix: true }) : ""}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => onReply(comment._id, comment.agentName || "Unknown")}
-            className="text-xs text-zinc-500 hover:text-blue-400 transition-colors"
-          >
-            Reply
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Toggle replies button (only for top-level comments with replies) */}
+            {!isReply && replyCount && replyCount > 0 && onToggleReplies && (
+              <button
+                type="button"
+                onClick={onToggleReplies}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+              >
+                {isExpanded ? "▼" : "▶"} {replyCount} {replyCount === 1 ? "reply" : "replies"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onReply(comment._id, comment.agentName || "Unknown")}
+              className="text-xs text-zinc-500 hover:text-blue-400 transition-colors"
+            >
+              Reply
+            </button>
+          </div>
         </div>
 
         {/* Comment text */}
@@ -158,6 +173,7 @@ export function CommentThreadV2({ taskId }: CommentThreadV2Props) {
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionPosition, setMentionPosition] = useState({ top: 0, left: 0 });
   const [replyingTo, setReplyingTo] = useState<{ id: string; agentName: string } | null>(null);
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
 
   const comments = useQuery(api.taskComments.listByTask, { taskId });
   const postComment = useMutation(api.taskComments.postComment);
@@ -230,11 +246,25 @@ export function CommentThreadV2({ taskId }: CommentThreadV2Props) {
 
   const handleReply = (commentId: string, agentName: string) => {
     setReplyingTo({ id: commentId, agentName });
+    // Auto-expand thread when replying
+    setExpandedThreads(prev => new Set(prev).add(commentId));
     textareaRef.current?.focus();
   };
 
   const cancelReply = () => {
     setReplyingTo(null);
+  };
+
+  const toggleThread = (commentId: string) => {
+    setExpandedThreads(prev => {
+      const next = new Set(prev);
+      if (next.has(commentId)) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -272,23 +302,32 @@ export function CommentThreadV2({ taskId }: CommentThreadV2Props) {
             <p className="text-sm text-zinc-600">No comments yet. Start the conversation!</p>
           </div>
         ) : (
-          topLevel.map((comment) => (
-            <div key={comment._id} className="space-y-2">
-              <CommentItem
-                comment={comment}
-                onReply={handleReply}
-              />
-              {/* Nested replies */}
-              {replies.get(comment._id)?.map((reply) => (
+          topLevel.map((comment) => {
+            const commentReplies = replies.get(comment._id) || [];
+            const replyCount = commentReplies.length;
+            const isExpanded = expandedThreads.has(comment._id);
+
+            return (
+              <div key={comment._id} className="space-y-2">
                 <CommentItem
-                  key={reply._id}
-                  comment={reply}
+                  comment={comment}
                   onReply={handleReply}
-                  isReply
+                  replyCount={replyCount}
+                  isExpanded={isExpanded}
+                  onToggleReplies={() => toggleThread(comment._id)}
                 />
-              ))}
-            </div>
-          ))
+                {/* Nested replies - collapsible */}
+                {isExpanded && commentReplies.map((reply) => (
+                  <CommentItem
+                    key={reply._id}
+                    comment={reply}
+                    onReply={handleReply}
+                    isReply
+                  />
+                ))}
+              </div>
+            );
+          })
         )}
         <div ref={bottomRef} />
       </div>

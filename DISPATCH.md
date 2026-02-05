@@ -1,20 +1,15 @@
 # Agent Dispatch Queue
 
-*Updated: Feb 5, 2026 — Session 23 (Max)*
+*Updated: Feb 5, 2026 — Session 24 (Max)*
 
 ---
 
 ## 🔴 P0 — CEO PRIORITIES
 
-### Human Required
-| Ticket | Task | Status |
-|--------|------|--------|
-| AGT-270 | Deploy create-ticket API (LINEAR_API_KEY env) | ⏳ Needs Vercel access |
-
 ### Sam (Backend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| AGT-268 | Per-Agent Ticket Completion Stats | 📋 Todo |
+| AGT-268 | Per-Agent Ticket Completion Stats | 📤 In Progress |
 
 ### Leo (Frontend)
 | Ticket | Task | Status |
@@ -43,6 +38,7 @@
 | Ticket | Task | Notes |
 |--------|------|-------|
 | AGT-244 | Delete the Middleman — Agents Self-Organize | Bold experiment |
+| AGT-270 | Deploy create-ticket API | P3 — MAX has MCP access, less critical |
 
 ---
 
@@ -57,8 +53,9 @@
 
 ---
 
-## Completed Today (Session 16-21)
+## Completed Today (Session 16-24)
 
+- ✅ AGT-255: Auto-Wake System — Linear status closed (Max)
 - ✅ Task cost tracking — Queries + HTTP endpoints (Sam)
 - ✅ AGT-80: Git activity feed (Sam)
 - ✅ Reply threading backend — Schema + API (Sam/Max)
@@ -86,7 +83,7 @@
 
 **Max:** Has Linear MCP access - can create/update tickets directly. AGT-270 less critical. Coordinating agents, tracking progress.
 
-**Human:** AGT-270 — Add LINEAR_API_KEY to Vercel env, redeploy. Enables MAX autonomous ticket creation.
+**Human:** AGT-270 now P3 — MAX has MCP access for tickets. No immediate blocker.
 
 ---
 
