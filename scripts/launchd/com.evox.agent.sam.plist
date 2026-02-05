@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.evox.agent.sam</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/sonpiaz/.openclaw/workspace/evox/scripts/agent-supervisor.sh</string>
+        <string>SAM</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/sonpiaz/.openclaw/workspace/evox</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/sonpiaz/.openclaw/workspace/evox/logs/launchd-sam.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/sonpiaz/.openclaw/workspace/evox/logs/launchd-sam-error.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+        <key>HOME</key>
+        <string>/Users/sonpiaz</string>
+    </dict>
+
+    <!-- Restart if crashes -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>
