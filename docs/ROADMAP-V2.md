@@ -44,7 +44,7 @@
 | 1.14 | Research CEO dashboard patterns | COLE | ✅ | AGT-309 |
 | 1.15 | Design system docs | MAYA | ✅ | AGT-294 |
 | 1.16 | Component library audit | MAYA | 🔄 | AGT-294 |
-| 1.17 | Setup Vitest framework | QUINN | ⬜ | AGT-295 |
+| 1.17 | Setup Vitest framework | QUINN | ✅ | AGT-295 |
 | 1.18 | Audit all docs - find outdated | ALEX | ⬜ | AGT-296 |
 | 1.19 | Coordinate & dispatch agents | MAX | 🔄 | AGT-304 |
 | 1.20 | Update roadmap daily | MAX | 🔄 | — |
@@ -70,7 +70,7 @@
 | 2.9 | CEO dashboard v2 wireframes | MAYA | ⬜ | AGT-310 |
 | 2.10 | Build SystemHealthWidget v2 | LEO | ⬜ | AGT-311 |
 | 2.11 | Build VelocityWidget v2 | LEO | ⬜ | AGT-312 |
-| 2.12 | Mobile responsive dashboard | LEO | ⬜ | — |
+| 2.12 | Mobile responsive dashboard | LEO | ✅ | — |
 | 2.13 | Dashboard alerts | LEO | ⬜ | — |
 | 2.14 | E2E tests - dashboard | QUINN | ⬜ | AGT-295 |
 | 2.15 | E2E tests - dispatch flow | QUINN | ⬜ | AGT-295 |

@@ -74,6 +74,9 @@ RETRY_BACKOFF_MULTIPLIER=2  # Exponential backoff multiplier
 LAST_TASK_COMPLETE=0    # Timestamp of last completed task
 LAST_REFRESH=0          # Timestamp of last Claude refresh
 REFRESH_INTERVAL=7200   # Refresh Claude every 2 hours to prevent memory bloat
+LAST_COMPACT=0          # Timestamp of last context compact
+COMPACT_INTERVAL=1800   # Compact context every 30 minutes
+COMPACT_THRESHOLD=5000  # Lines in tmux history before compact
 
 # Stats (for monitoring dashboard)
 STATS_TASKS_COMPLETED=0
@@ -355,6 +358,47 @@ force_restart_claude() {
   post_status "🔥 Force restarted Claude (was stuck)"
 }
 
+# ============================================================================
+# CONTEXT AUTO-COMPACT (Task 2.3: Prevent context bloat)
+# ============================================================================
+
+# Get tmux history size (approximate line count)
+get_context_size() {
+  local size=$(tmux capture-pane -t "$TMUX_SESSION" -p -S - 2>/dev/null | wc -l)
+  echo "${size:-0}"
+}
+
+# Compact context by sending /compact command to Claude
+compact_context() {
+  log "   📦 Compacting context..."
+
+  if ! is_claude_idle; then
+    log "   ⏸️ Claude busy, skipping compact"
+    return 1
+  fi
+
+  # Send /compact command to Claude Code
+  send_to_tmux "/compact"
+  sleep 3
+
+  # Clear tmux scrollback history to free memory
+  tmux clear-history -t "$TMUX_SESSION" 2>/dev/null || true
+
+  log "   ✅ Context compacted, tmux history cleared"
+  return 0
+}
+
+# Check if context needs compacting
+check_context_size() {
+  local size=$(get_context_size)
+
+  if [ "$size" -gt "$COMPACT_THRESHOLD" ]; then
+    log "   ⚠️ Context size: $size lines (threshold: $COMPACT_THRESHOLD)"
+    return 0  # Needs compact
+  fi
+  return 1
+}
+
 # Wait for Claude to become idle (task complete)
 wait_for_completion() {
   local timeout="$1"
@@ -527,6 +571,25 @@ while true; do
       force_restart_claude
       LAST_REFRESH=$CURRENT_TIME
       post_status "🔄 Periodic refresh complete (memory optimization)"
+    fi
+  fi
+
+  # -------------------------------------------------------------------------
+  # CONTEXT AUTO-COMPACT (Task 2.3: every 30 min or threshold)
+  # -------------------------------------------------------------------------
+  if [ "$LAST_COMPACT" -eq 0 ]; then
+    LAST_COMPACT=$CURRENT_TIME
+  elif [ $((CURRENT_TIME - LAST_COMPACT)) -ge $COMPACT_INTERVAL ]; then
+    # Time-based compact (every 30 min)
+    if is_claude_idle; then
+      log "📦 Periodic context compact (every 30 min)..."
+      compact_context && LAST_COMPACT=$CURRENT_TIME
+    fi
+  elif check_context_size; then
+    # Size-based compact (threshold exceeded)
+    if is_claude_idle; then
+      log "📦 Context threshold exceeded, compacting..."
+      compact_context && LAST_COMPACT=$CURRENT_TIME
     fi
   fi
 
