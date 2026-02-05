@@ -57,7 +57,7 @@ log "Poll interval: ${POLL_INTERVAL}s"
 log ""
 
 # ============================================================================
-# API FUNCTIONS (Using GET endpoints - currently deployed)
+# API FUNCTIONS (Using deployed endpoints)
 # ============================================================================
 
 # Get next pending dispatch for this agent
@@ -88,11 +88,34 @@ mark_failed() {
   curl -s "$EVOX_API/markDispatchFailed?dispatchId=$dispatch_id&error=$encoded_error" 2>/dev/null || echo '{"error":"failed"}'
 }
 
-# Send heartbeat to channel
+# ============================================================================
+# STATUS TRACKING (AGT-292: Agent Status in Convex)
+# ============================================================================
+
+# Update agent status in Convex via heartbeat API
+update_agent_status() {
+  local status="$1"
+  local current_task="${2:-}"
+  curl -s -X POST "$EVOX_API/api/heartbeat" \
+    -H "Content-Type: application/json" \
+    -d "{\"agentId\": \"$AGENT_UPPER\", \"status\": \"$status\", \"currentTask\": $( [ -n "$current_task" ] && echo "\"$current_task\"" || echo "null" )}" 2>/dev/null || true
+}
+
+# Report recovery success (reset failure counters)
+report_recovery_success() {
+  # This would call the recovery API if deployed
+  log "   📈 Recovery success reported"
+}
+
+# Send heartbeat to channel AND update status
 send_heartbeat() {
+  local status="${1:-idle}"
+  # Update Convex status
+  update_agent_status "$status"
+  # Also post to channel for visibility
   curl -s -X POST "$EVOX_API/postToChannel" \
     -H "Content-Type: application/json" \
-    -d "{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"message\": \"🫀 Heartbeat: Online, checking for work\"}" 2>/dev/null || true
+    -d "{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"message\": \"🫀 Heartbeat: ${status^}, checking for work\"}" 2>/dev/null || true
 }
 
 # Post status to dev channel
@@ -104,12 +127,49 @@ post_status() {
 }
 
 # ============================================================================
-# TMUX FUNCTIONS
+# TMUX FUNCTIONS (with self-healing)
 # ============================================================================
 
 # Check if tmux session exists
 session_exists() {
   tmux has-session -t "$TMUX_SESSION" 2>/dev/null
+}
+
+# Self-healing: Create tmux session if it doesn't exist
+create_session() {
+  log "   🔧 Self-healing: Creating tmux session $TMUX_SESSION..."
+  tmux new-session -d -s "$TMUX_SESSION" -c "$EVOX_DIR" 2>/dev/null || true
+  sleep 2
+
+  # Start Claude Code in the session
+  if session_exists; then
+    log "   🚀 Starting Claude Code in session..."
+    tmux send-keys -t "$TMUX_SESSION" "claude" Enter
+    sleep 5  # Wait for Claude to initialize
+    return 0
+  fi
+  return 1
+}
+
+# Ensure session exists (self-healing)
+ensure_session() {
+  if ! session_exists; then
+    log "   ⚠️ tmux session not found, attempting self-heal..."
+    update_agent_status "idle"  # Report we're recovering
+
+    if create_session; then
+      log "   ✅ Session recreated successfully"
+      post_status "🔧 Self-healed: Recreated tmux session"
+      report_recovery_success
+      return 0
+    else
+      log "   ❌ Failed to recreate session"
+      update_agent_status "offline"
+      post_status "❌ Self-heal failed: Cannot create tmux session"
+      return 1
+    fi
+  fi
+  return 0
 }
 
 # Send command to tmux session
@@ -134,6 +194,16 @@ is_claude_idle() {
   return 1
 }
 
+# Check if Claude is stuck (showing error or crashed)
+is_claude_stuck() {
+  local output=$(get_tmux_output 20)
+  # Check for error patterns
+  if [[ "$output" == *"Error:"* ]] || [[ "$output" == *"panic"* ]] || [[ "$output" == *"SIGTERM"* ]]; then
+    return 0
+  fi
+  return 1
+}
+
 # Wait for Claude to become idle (task complete)
 wait_for_completion() {
   local timeout="$1"
@@ -142,6 +212,12 @@ wait_for_completion() {
   while [ $elapsed -lt $timeout ]; do
     sleep "$COMPLETION_CHECK"
     elapsed=$((elapsed + COMPLETION_CHECK))
+
+    # Check for stuck/crashed state
+    if is_claude_stuck; then
+      log "   🔴 Claude appears stuck/crashed"
+      return 2  # Special return code for stuck
+    fi
 
     if is_claude_idle; then
       log "   ✅ Claude is idle (task likely complete)"
@@ -161,9 +237,18 @@ wait_for_completion() {
 
 CYCLE=0
 LAST_HEARTBEAT=0
+CONSECUTIVE_FAILURES=0
+MAX_FAILURES=3
 
-# Startup announcement
+# Startup: Set status to online and announce
+update_agent_status "online"
 post_status "🚀 Work loop started. Ready for tasks."
+
+# Ensure tmux session exists at startup
+if ! ensure_session; then
+  log "❌ Failed to initialize tmux session. Exiting."
+  exit 1
+fi
 
 while true; do
   CYCLE=$((CYCLE + 1))
@@ -173,11 +258,40 @@ while true; do
   log "🔄 Cycle $CYCLE - $(date '+%H:%M:%S')"
 
   # -------------------------------------------------------------------------
+  # 0. SELF-HEALING CHECK (ensure session exists)
+  # -------------------------------------------------------------------------
+  if ! ensure_session; then
+    CONSECUTIVE_FAILURES=$((CONSECUTIVE_FAILURES + 1))
+    log "   ❌ Session check failed (${CONSECUTIVE_FAILURES}/${MAX_FAILURES})"
+
+    if [ $CONSECUTIVE_FAILURES -ge $MAX_FAILURES ]; then
+      log "   🛑 Circuit breaker: Too many failures. Stopping."
+      update_agent_status "offline"
+      post_status "🛑 Circuit breaker tripped after ${MAX_FAILURES} failures"
+      exit 1
+    fi
+
+    sleep "$POLL_INTERVAL"
+    continue
+  fi
+
+  # Reset failure counter on successful check
+  if [ $CONSECUTIVE_FAILURES -gt 0 ]; then
+    log "   ✅ Session recovered, resetting failure counter"
+    CONSECUTIVE_FAILURES=0
+    report_recovery_success
+  fi
+
+  # -------------------------------------------------------------------------
   # 1. HEARTBEAT (every 5 minutes)
   # -------------------------------------------------------------------------
   if [ $((CURRENT_TIME - LAST_HEARTBEAT)) -ge $HEARTBEAT_INTERVAL ]; then
     log "💓 Sending heartbeat..."
-    send_heartbeat
+    if is_claude_idle; then
+      send_heartbeat "idle"
+    else
+      send_heartbeat "busy"
+    fi
     LAST_HEARTBEAT=$CURRENT_TIME
   fi
 
@@ -192,11 +306,14 @@ while true; do
     log "   📭 No dispatch in queue"
 
     # -------------------------------------------------------------------------
-    # SELF-ASSIGNMENT MODE (North Star: KHÔNG BAO GIỜ IDLE)
+    # SELF-ASSIGNMENT MODE (North Star: KHÔNG BAO GIỜ IDLE > 5 min)
     # -------------------------------------------------------------------------
     log "   🔍 Entering self-assignment mode..."
 
-    if session_exists && is_claude_idle; then
+    if ensure_session && is_claude_idle; then
+      # Update status to busy for self-assigned work
+      update_agent_status "busy" "Self-assigned work"
+
       # Build self-assignment prompt for Claude
       SELF_ASSIGN_PROMPT="You have no assigned dispatch. Time to SELF-ASSIGN work.
 
@@ -227,6 +344,9 @@ GO. Find work. Ship something."
       # Wait shorter time for self-assigned work
       log "   ⏳ Waiting for self-assigned work (max 300s)..."
       wait_for_completion 300 || true
+
+      # Back to idle after self-assigned work
+      update_agent_status "idle"
     fi
 
     log "   ⏳ Sleeping ${POLL_INTERVAL}s..."
@@ -261,21 +381,22 @@ GO. Find work. Ship something."
   log "   ✅ Claimed successfully"
 
   # -------------------------------------------------------------------------
-  # 5. CHECK TMUX SESSION
+  # 5. CHECK TMUX SESSION (with self-healing)
   # -------------------------------------------------------------------------
-  if ! session_exists; then
-    log "   ❌ tmux session '$TMUX_SESSION' not found"
+  if ! ensure_session; then
+    log "   ❌ Cannot recover tmux session"
     log "   📢 Marking dispatch as failed"
-    mark_failed "$DISPATCH_ID" "tmux session not found"
-    post_status "❌ Error: tmux session not found. Need restart."
+    mark_failed "$DISPATCH_ID" "tmux session recovery failed"
+    post_status "❌ Error: tmux session recovery failed."
     sleep "$POLL_INTERVAL"
     continue
   fi
 
   # -------------------------------------------------------------------------
-  # 6. BUILD AND SEND TASK TO CLAUDE
+  # 6. UPDATE STATUS TO BUSY & SEND TASK TO CLAUDE
   # -------------------------------------------------------------------------
   log "   📤 Sending task to Claude..."
+  update_agent_status "busy" "$COMMAND"
 
   # Build the task prompt
   TASK_PROMPT="You have a new task assigned.
@@ -299,20 +420,39 @@ GO. Execute this task now."
   send_to_tmux "$TASK_PROMPT"
 
   # -------------------------------------------------------------------------
-  # 7. WAIT FOR COMPLETION
+  # 7. WAIT FOR COMPLETION (with stuck detection)
   # -------------------------------------------------------------------------
   log "   ⏳ Waiting for task completion (max ${TASK_TIMEOUT}s)..."
 
-  if wait_for_completion "$TASK_TIMEOUT"; then
-    log "   ✅ Task appears complete"
-    # Note: Claude should have called markDispatchCompleted
-    # But we'll verify and mark if needed
-    sleep 5  # Give Claude time to make API calls
-  else
-    log "   ⚠️ Task timed out, marking as failed"
-    mark_failed "$DISPATCH_ID" "Timeout after ${TASK_TIMEOUT}s"
-    post_status "⚠️ Task timed out: $COMMAND"
-  fi
+  WAIT_RESULT=0
+  wait_for_completion "$TASK_TIMEOUT" || WAIT_RESULT=$?
+
+  case $WAIT_RESULT in
+    0)
+      log "   ✅ Task appears complete"
+      update_agent_status "idle"
+      report_recovery_success
+      sleep 5  # Give Claude time to make API calls
+      ;;
+    1)
+      log "   ⚠️ Task timed out, marking as failed"
+      mark_failed "$DISPATCH_ID" "Timeout after ${TASK_TIMEOUT}s"
+      post_status "⚠️ Task timed out: $COMMAND"
+      update_agent_status "idle"
+      ;;
+    2)
+      log "   🔴 Claude appears stuck, attempting recovery..."
+      mark_failed "$DISPATCH_ID" "Agent stuck/crashed"
+      post_status "🔴 Agent stuck. Attempting recovery..."
+
+      # Try to restart Claude in the session
+      send_to_tmux "/exit"
+      sleep 2
+      send_to_tmux "claude"
+      sleep 5
+      update_agent_status "idle"
+      ;;
+  esac
 
   # -------------------------------------------------------------------------
   # 8. BRIEF PAUSE BEFORE NEXT CYCLE
