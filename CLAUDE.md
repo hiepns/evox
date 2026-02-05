@@ -107,3 +107,12 @@ npx convex run agentActions:completeTask '{"agent":"sam","ticket":"AGT-XX","acti
 | [ADR-004](docs/decisions/ADR-004.md) | Scheduler-driven agent activation |
 | [ADR-005](docs/decisions/ADR-005.md) | Permission levels and human oversight |
 | [ADR-006](docs/decisions/ADR-006.md) | Headless agent authentication via tmux |
+
+---
+
+## Security Rules
+
+1. **KHÔNG hardcode secrets** — API keys, tokens, passwords phải ở `.env.local`
+2. **Pre-commit check** — Grep for secrets trước khi commit
+3. **Review LESSONS.md** — Học từ sai lầm trước
+
