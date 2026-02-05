@@ -261,6 +261,7 @@ export function CEODashboard({ className }: CEODashboardProps) {
   const dashboardStats = useQuery(api.dashboard.getStats, { startTs: todayStart, endTs: todayEnd });
   const automationProgress = useQuery(api.automationMetrics.getProgress);
   const recentActivity = useQuery(api.activityEvents.list, { limit: 8 }) as ActivityEvent[] | undefined;
+  const recentCommits = useQuery(api.gitActivity.getRecent, { limit: 6 }) as GitCommit[] | undefined;
 
   // Get performance metrics for cost
   const today = new Date().toISOString().split('T')[0];
@@ -506,7 +507,7 @@ export function CEODashboard({ className }: CEODashboardProps) {
           </div>
 
           {/* Quick Stats */}
-          <div className="mt-auto pt-2 border-t border-white/10">
+          <div className="pt-2 border-t border-white/10">
             <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">
               24h Summary
             </div>
@@ -529,6 +530,22 @@ export function CEODashboard({ className }: CEODashboardProps) {
                 <span className="text-white/40">Value Est.</span>
                 <span className="text-emerald-400 font-medium">${metrics.velocity * 50}</span>
               </div>
+            </div>
+          </div>
+
+          {/* Git Activity — AGT-272 */}
+          <div className="mt-3 pt-2 border-t border-white/10 flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2 flex items-center gap-1">
+              <span>🔀</span> Recent Commits
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1">
+              {recentCommits && recentCommits.length > 0 ? (
+                recentCommits.map((commit) => (
+                  <GitCommitItem key={commit._id} commit={commit} />
+                ))
+              ) : (
+                <div className="text-[10px] text-white/30 text-center py-2">No recent commits</div>
+              )}
             </div>
           </div>
         </div>
