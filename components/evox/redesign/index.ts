@@ -5,3 +5,4 @@
 
 export { HeroStatus, HeroStatusCompact, calculateHeroStatus } from "./HeroStatus";
 export { AlertList, AlertRow } from "./AlertList";
+export { MobileCEODashboard } from "./MobileCEODashboard";
