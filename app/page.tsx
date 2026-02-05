@@ -30,8 +30,8 @@ import { CEODashboard } from "@/components/evox/CEODashboard";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 
-/** Agent order: MAX → SAM → LEO */
-const AGENT_ORDER = ["max", "sam", "leo"];
+/** Agent order: MAX → SAM → LEO → QUINN */
+const AGENT_ORDER = ["max", "sam", "leo", "quinn"];
 function sortAgents<T extends { name: string }>(list: T[]): T[] {
   return [...list].sort((a, b) => {
     const i = AGENT_ORDER.indexOf(a.name.toLowerCase());
