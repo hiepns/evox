@@ -3968,6 +3968,81 @@ http.route({
 });
 
 // ============================================================
+// TASK HISTORY ENDPOINTS (Task 3.1: History Tracking)
+// ============================================================
+
+/**
+ * GET /taskHistory?agent=sam&limit=50 — Get detailed task history for an agent
+ * Query params: agent (required), limit (optional), since (optional timestamp)
+ */
+http.route({
+  path: "/taskHistory",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+      const limitStr = url.searchParams.get("limit");
+      const sinceStr = url.searchParams.get("since");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query param required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const history = await ctx.runQuery(api.agentStats.getTaskHistory, {
+        agent,
+        limit: limitStr ? parseInt(limitStr, 10) : undefined,
+        since: sinceStr ? parseInt(sinceStr, 10) : undefined,
+      });
+
+      return new Response(JSON.stringify(history), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("taskHistory error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /teamTaskHistory?days=7 — Get team-wide task history summary
+ * Query params: days (optional, default 7)
+ */
+http.route({
+  path: "/teamTaskHistory",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const daysStr = url.searchParams.get("days");
+
+      const history = await ctx.runQuery(api.agentStats.getTeamTaskHistory, {
+        days: daysStr ? parseInt(daysStr, 10) : undefined,
+      });
+
+      return new Response(JSON.stringify(history), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("teamTaskHistory error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+// ============================================================
 // INCIDENT LOGGING (AGT-277: Git Rollback Mechanism)
 // ============================================================
 
