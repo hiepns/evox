@@ -1,10 +1,7 @@
 #!/bin/bash
-# agent-loop.sh — 100x Autonomous Agent Loop (AGT-251)
-#
+# agent-loop.sh — Autonomous agent work loop
 # Usage: ./scripts/agent-loop.sh <agent>
-#
-# NEW: Direct Linear polling — no dispatch queue needed!
-# Agent grabs highest priority unassigned ticket matching their role.
+# Runs continuously, checking for work every cycle
 
 set -e
 
@@ -16,218 +13,124 @@ fi
 
 AGENT_LOWER=$(echo "$AGENT" | tr '[:upper:]' '[:lower:]')
 AGENT_UPPER=$(echo "$AGENT" | tr '[:lower:]' '[:upper:]')
-PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-CONVEX_URL="https://gregarious-elk-556.convex.site"
-LINEAR_API="https://api.linear.app/graphql"
-LOCK_FILE="$PROJECT_DIR/.lock-$AGENT_LOWER"
+EVOX_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+EVOX_API="https://gregarious-elk-556.convex.site"
 
-cd "$PROJECT_DIR"
-source .env.local 2>/dev/null || true
+cd "$EVOX_DIR"
 
-# === Agent Role Mapping ===
-case "$AGENT_LOWER" in
-  sam) ROLE="backend"; KEYWORDS="SAM|Backend|convex|api|schema" ;;
-  leo) ROLE="frontend"; KEYWORDS="LEO|Frontend|UI|component|dashboard" ;;
-  max) ROLE="pm"; KEYWORDS="MAX|PM|planning|coordination" ;;
-  quinn) ROLE="qa"; KEYWORDS="QUINN|QA|test|bug" ;;
-  *) ROLE="general"; KEYWORDS="." ;;
-esac
-
-# === LOCK: Prevent duplicate processes ===
-if [ -f "$LOCK_FILE" ]; then
-  OLD_PID=$(cat "$LOCK_FILE")
-  if ps -p "$OLD_PID" > /dev/null 2>&1; then
-    echo "ERROR: $AGENT already running (PID $OLD_PID)"
-    exit 1
-  fi
-  rm -f "$LOCK_FILE"
-fi
-echo $$ > "$LOCK_FILE"
-
-# === HEARTBEAT ===
-send_heartbeat() {
-  curl -s -X POST "$CONVEX_URL/api/heartbeat" \
-    -H "Content-Type: application/json" \
-    -d "{\"agentName\":\"$AGENT_LOWER\",\"status\":\"$1\",\"statusReason\":\"$2\"}" > /dev/null 2>&1 || true
-}
-
-# === CLEANUP ON EXIT ===
-CURRENT_TICKET="none"
-cleanup() {
-  echo ""
-  echo "=== Agent $AGENT_UPPER shutting down ==="
-  send_heartbeat "offline" "shutdown"
-  rm -f "$LOCK_FILE"
-}
-trap cleanup EXIT SIGINT SIGTERM
-
-echo "╔════════════════════════════════════════════════╗"
-echo "║  $AGENT_UPPER Agent — 100x Autonomous Mode     ║"
-echo "║  Direct Linear Polling • No Dispatch Queue    ║"
-echo "╚════════════════════════════════════════════════╝"
+echo "🤖 $AGENT_UPPER Autonomous Loop Starting..."
+echo "   Directory: $EVOX_DIR"
+echo "   API: $EVOX_API"
 echo ""
-send_heartbeat "starting" "boot"
 
-# === MAIN LOOP ===
+# Function to check for messages
+check_messages() {
+  curl -s "$EVOX_API/v2/getMessages?agent=$AGENT_UPPER&limit=10" 2>/dev/null
+}
+
+# Function to check for work
+check_work() {
+  curl -s "$EVOX_API/getNextDispatchForAgent?agent=$AGENT_UPPER" 2>/dev/null
+}
+
+# Function to send heartbeat
+send_heartbeat() {
+  curl -s -X POST "$EVOX_API/postToChannel" \
+    -H "Content-Type: application/json" \
+    -d "{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"content\": \"🫀 Heartbeat: Online and checking for work\"}" 2>/dev/null
+}
+
+CYCLE=0
+
 while true; do
-  send_heartbeat "polling" "looking_for_work"
-
-  # === 1. Check dispatch queue first (backward compatible) ===
-  RESPONSE=$(curl -s "$CONVEX_URL/getNextDispatchForAgent?agent=$AGENT_LOWER" 2>/dev/null || echo "{}")
-  DISPATCH_ID=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('dispatchId',''))" 2>/dev/null || echo "")
-  TICKET=$(echo "$RESPONSE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('ticket',''))" 2>/dev/null || echo "")
-
-  # === 2. If no dispatch, poll Linear directly ===
-  # Check for empty, "null" (JSON string), "None" (Python None printed), or empty string
-  if [ -z "$TICKET" ] || [ "$TICKET" = "null" ] || [ "$TICKET" = "None" ] || [ "$TICKET" = "" ]; then
-    echo "No dispatch. Polling Linear directly..."
-
-    # Query Linear for unassigned backlog tickets matching agent role
-    # Note: orderBy must be updatedAt or createdAt (not priority)
-    LINEAR_QUERY='{"query":"{ issues(filter: { state: { type: { in: [\"backlog\", \"unstarted\"] } }, assignee: { null: true } }, first: 10) { nodes { identifier title priority state { name } labels { nodes { name } } } } }"}'
-
-    LINEAR_RESPONSE=$(curl -s -X POST "$LINEAR_API" \
-      -H "Content-Type: application/json" \
-      -H "Authorization: $LINEAR_API_KEY" \
-      -d "$LINEAR_QUERY" 2>/dev/null || echo "{}")
-
-    # Find ticket matching agent's keywords (or take first available)
-    TICKET=$(echo "$LINEAR_RESPONSE" | python3 -c "
-import json, sys, re
-try:
-    data = json.load(sys.stdin)
-    issues = data.get('data', {}).get('issues', {}).get('nodes', [])
-    keywords = '$KEYWORDS'
-    # First try keyword match
-    for issue in issues:
-        title = issue.get('title', '')
-        labels = ' '.join([l.get('name','') for l in issue.get('labels',{}).get('nodes',[])])
-        if re.search(keywords, title + ' ' + labels, re.IGNORECASE):
-            print(issue.get('identifier', ''))
-            break
-    else:
-        # No keyword match - take first available ticket (any agent can help)
-        if issues:
-            print(issues[0].get('identifier', ''))
-except:
-    pass
-" 2>/dev/null || echo "")
-
-    DISPATCH_ID=""  # No dispatch for direct Linear grab
-  fi
-
-  # === 3. No work found ===
-  if [ -z "$TICKET" ] || [ "$TICKET" = "null" ] || [ "$TICKET" = "None" ] || [ "$TICKET" = "" ]; then
-    send_heartbeat "idle" "no_work"
-    echo "$(date '+%H:%M:%S') — No work for $AGENT_UPPER. Sleeping 30s..."
-    sleep 30
-    continue
-  fi
-
-  # === 4. WORK ON TICKET ===
+  CYCLE=$((CYCLE + 1))
   echo ""
-  echo "╔════════════════════════════════════════════════╗"
-  echo "║  TASK: $TICKET"
-  echo "╚════════════════════════════════════════════════╝"
-  CURRENT_TICKET="$TICKET"
-  send_heartbeat "working" "$TICKET"
+  echo "=========================================="
+  echo "🔄 Cycle $CYCLE - $(date '+%H:%M:%S')"
+  echo "=========================================="
+  
+  # 1. Check messages
+  echo "📬 Checking messages..."
+  MESSAGES=$(check_messages)
+  UNREAD=$(echo "$MESSAGES" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('unreadCount',{}).get('dms',0))" 2>/dev/null || echo "0")
+  
+  if [ "$UNREAD" != "0" ] && [ "$UNREAD" != "" ]; then
+    echo "   📨 $UNREAD unread messages - Starting Claude to respond..."
+    
+    PROMPT="You are $AGENT_UPPER. You have $UNREAD unread messages.
 
-  # Auto-claim: Update Convex that this agent is working on ticket (AGT-261)
-  echo "Claiming $TICKET for $AGENT_UPPER..."
-  curl -s "$CONVEX_URL/claimTicket?agent=$AGENT_LOWER&ticket=$TICKET" > /dev/null 2>&1 || true
+CHECK YOUR MESSAGES NOW:
+\`\`\`bash
+curl -s '$EVOX_API/v2/getMessages?agent=$AGENT_UPPER&limit=10'
+\`\`\`
 
-  # Mark dispatch running if we have one
-  if [ -n "$DISPATCH_ID" ] && [ "$DISPATCH_ID" != "null" ]; then
-    curl -s "$CONVEX_URL/markDispatchRunning?dispatchId=$DISPATCH_ID" > /dev/null 2>&1 || true
-  fi
+For each unread message:
+1. Read it carefully
+2. Respond appropriately via:
+   \`\`\`bash
+   curl -X POST '$EVOX_API/v2/sendMessage' -H 'Content-Type: application/json' -d '{\"from\": \"$AGENT_UPPER\", \"to\": \"SENDER\", \"message\": \"your response\"}'
+   \`\`\`
 
-  # Boot agent context
-  ./scripts/boot.sh "$AGENT_LOWER" "$TICKET"
+After responding to ALL messages, say MESSAGES_DONE."
 
-  # === 5. BUILD PROMPT FROM UNIFIED IDENTITY ===
-  # Load identity from agents/*.md (Single Source of Truth)
-  IDENTITY_FILE="$PROJECT_DIR/agents/$AGENT_LOWER.md"
-  if [ -f "$IDENTITY_FILE" ]; then
-    IDENTITY=$(cat "$IDENTITY_FILE")
+    timeout 300 claude --dangerously-skip-permissions "$PROMPT" 2>/dev/null || true
   else
-    IDENTITY="You are $AGENT_UPPER — EVOX $ROLE engineer."
+    echo "   ✅ No unread messages"
   fi
+  
+  # 2. Check for work
+  echo "📋 Checking dispatch queue..."
+  WORK=$(check_work)
+  HAS_WORK=$(echo "$WORK" | python3 -c "import sys,json; d=json.load(sys.stdin); print('yes' if d and d.get('_id') else 'no')" 2>/dev/null || echo "no")
+  
+  if [ "$HAS_WORK" = "yes" ]; then
+    DISPATCH_ID=$(echo "$WORK" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('_id',''))" 2>/dev/null)
+    COMMAND=$(echo "$WORK" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('command',''))" 2>/dev/null)
+    PAYLOAD=$(echo "$WORK" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('payload',''))" 2>/dev/null)
+    
+    echo "   🎯 Found work: $COMMAND"
+    echo "   📦 Dispatch ID: $DISPATCH_ID"
+    
+    # Mark as running
+    curl -s -X POST "$EVOX_API/markDispatchRunning" \
+      -H "Content-Type: application/json" \
+      -d "{\"dispatchId\": \"$DISPATCH_ID\"}" 2>/dev/null
+    
+    PROMPT="You are $AGENT_UPPER. You have a task assigned.
 
-  PROMPT="$IDENTITY
+TASK: $COMMAND
+DETAILS: $PAYLOAD
+DISPATCH_ID: $DISPATCH_ID
 
----
+Read your agent file: agents/$AGENT_LOWER.md
+Read docs/CULTURE.md for context.
 
-## CURRENT TASK: $TICKET
+DO THE WORK. When complete:
+1. Commit your changes if any: git add -A && git commit -m 'feat: description'
+2. Mark complete:
+   \`\`\`bash
+   curl -X POST '$EVOX_API/markDispatchCompleted' -H 'Content-Type: application/json' -d '{\"dispatchId\": \"$DISPATCH_ID\", \"result\": \"Brief summary of what you did\"}'
+   \`\`\`
+3. Post to dev channel:
+   \`\`\`bash
+   curl -X POST '$EVOX_API/postToChannel' -H 'Content-Type: application/json' -d '{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"content\": \"✅ Completed: description\"}'
+   \`\`\`
 
-## ABSOLUTE RULES — VIOLATION = FAILURE
-- DO NOT ask questions. Ever. For any reason.
-- DO NOT ask 'should I...?' or 'would you like...?' — JUST DO IT.
-- DO NOT ask for clarification. Make assumptions and proceed.
-- DO NOT wait for approval. Ship immediately.
-- DO NOT say 'Let me know if...' — There is no one to ask.
-- If uncertain, pick the best option and execute.
-- If error, fix it yourself and continue.
-- You are ALONE. No human will respond. Act accordingly.
+Start working now."
 
-## EXECUTION WORKFLOW
-1. mcp__linear__get_issue id=\"$TICKET\" → get full details
-2. Read relevant files, understand context
-3. Implement the solution NOW
-4. npx next build → verify no errors
-5. git add -A && git commit -m 'closes $TICKET: <summary>'
-6. git push
-7. mcp__linear__update_issue id=\"$TICKET\" state=\"Done\"
-8. Output: TASK_COMPLETE
-
-START IMMEDIATELY. Zero questions. Ship it."
-
-  echo ""
-  echo "Starting Claude for $TICKET..."
-  echo ""
-
-  # === 6. RUN CLAUDE WITH SELF-HEALING (AGT-251) ===
-  # Uses ANTHROPIC_API_KEY from .env.local for headless operation
-  # Key configured for API credits (not subscription)
-
-  MAX_RETRIES=3
-  RETRY_COUNT=0
-  TASK_SUCCESS=false
-
-  while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$TASK_SUCCESS" = "false" ]; do
-    if [ $RETRY_COUNT -gt 0 ]; then
-      BACKOFF_SECONDS=$((2 ** $RETRY_COUNT))
-      echo ""
-      echo "⚠️  Retry attempt $RETRY_COUNT/$MAX_RETRIES after ${BACKOFF_SECONDS}s backoff..."
-      sleep $BACKOFF_SECONDS
-    fi
-
-    if claude --dangerously-skip-permissions "$PROMPT"; then
-      echo ""
-      echo "✅ $TICKET COMPLETED"
-      TASK_SUCCESS=true
-      if [ -n "$DISPATCH_ID" ] && [ "$DISPATCH_ID" != "null" ]; then
-        curl -s "$CONVEX_URL/markDispatchCompleted?dispatchId=$DISPATCH_ID" > /dev/null 2>&1 || true
-      fi
-    else
-      RETRY_COUNT=$((RETRY_COUNT + 1))
-      echo ""
-      echo "❌ Attempt $RETRY_COUNT failed"
-    fi
-  done
-
-  # If all retries exhausted, escalate
-  if [ "$TASK_SUCCESS" = "false" ]; then
-    echo ""
-    echo "🚨 $TICKET FAILED after $MAX_RETRIES attempts — ESCALATING"
-    if [ -n "$DISPATCH_ID" ] && [ "$DISPATCH_ID" != "null" ]; then
-      curl -s "$CONVEX_URL/markDispatchFailed?dispatchId=$DISPATCH_ID&error=retry_exhausted" > /dev/null 2>&1 || true
-    fi
-
-    # Log failure to Convex
-    npx convex run agentActions:reportFailure "{\"agent\":\"$AGENT_LOWER\",\"ticket\":\"$TICKET\",\"error\":\"Exhausted $MAX_RETRIES retries\",\"retryable\":false}" > /dev/null 2>&1 || true
+    timeout 600 claude --dangerously-skip-permissions "$PROMPT" 2>/dev/null || true
+    
+  else
+    echo "   😴 No pending work"
   fi
-
-  echo ""
-  echo "Looking for next task..."
-  sleep 5
+  
+  # 3. Heartbeat every 10 cycles
+  if [ $((CYCLE % 10)) -eq 0 ]; then
+    echo "💓 Sending heartbeat..."
+    send_heartbeat
+  fi
+  
+  # 4. Wait before next cycle
+  echo "⏳ Waiting 60s before next cycle..."
+  sleep 60
 done
