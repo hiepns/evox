@@ -18,6 +18,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { startOfDay, endOfDay, formatDistanceToNow, subDays } from "date-fns";
+import { AgentTerminals } from "./AgentTerminals";
 
 interface CEODashboardProps {
   className?: string;
@@ -565,6 +566,11 @@ export function CEODashboard({ className }: CEODashboardProps) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Row 3: Agent Terminals */}
+      <div className="mt-4">
+        <AgentTerminals />
       </div>
     </div>
   );
