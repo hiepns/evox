@@ -107,11 +107,21 @@ _Last updated: 2026-02-05 03:50 PST_
 
 ---
 
-## Vercel 401 Issue — Current Workaround
+## Vercel 401 Issue — FIX IN 30 SECONDS
 
-**Problem:** Vercel Preview có Password Protection, cần manual disable.
+**Problem:** Vercel Preview Deployment Protection blocks all preview URLs with 401.
 
-**Immediate Solutions (no CEO action needed):**
+### ONE-CLICK FIX (CEO action needed):
+
+1. Go to: https://vercel.com/sonpiaz/evox/settings/deployment-protection
+2. Set "Preview Deployments" to **"Only Vercel Authentication"** or **"None"**
+3. Click Save
+
+**That's it. 30 seconds. Done forever.**
+
+---
+
+### Current Workarounds (until fixed):
 
 1. **Tailscale (RECOMMENDED):**
    - URL: http://100.106.143.17:3000
@@ -125,6 +135,4 @@ _Last updated: 2026-02-05 03:50 PST_
    - Password: `157.131.255.168` (Mac mini public IP)
    - URL changes each restart
 
-3. **Long-term:** Deploy to Netlify/Railway with API token (SAM researching)
-
-**Status:** Using Tailscale as official UAT for now.
+**Status:** Using Tailscale as official UAT. Vercel fix pending CEO action.
