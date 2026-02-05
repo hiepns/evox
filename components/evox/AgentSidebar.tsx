@@ -124,7 +124,7 @@ export function AgentSidebar({
           {agents.length}
         </span>
       </div>
-      <nav className="flex-1 overflow-y-auto">
+      <nav className="flex-1 overflow-y-auto" aria-label="Agent list">
         {agents.map((agent) => {
           const status = (agent.status ?? "offline").toLowerCase();
           const dotColor = statusColors[status] ?? statusColors.offline;
@@ -137,6 +137,8 @@ export function AgentSidebar({
               type="button"
               onClick={() => handleClick(agent._id)}
               onDoubleClick={() => handleDoubleClick(agent._id)}
+              aria-label={`${agent.name}, ${roleLabels[agent.role] ?? agent.role}, ${working ? "working" : status}`}
+              aria-current={isSelected ? "true" : undefined}
               className={cn(
                 "flex h-16 w-full cursor-pointer items-center gap-3 border-b border-[#222222] px-3 text-left transition-colors duration-150",
                 "hover:bg-[#1a1a1a]",
