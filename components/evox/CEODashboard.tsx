@@ -21,6 +21,7 @@ import { startOfDay, endOfDay, formatDistanceToNow, subDays } from "date-fns";
 import { AgentTerminals } from "./AgentTerminals";
 import { SystemHealthWidget } from "./SystemHealthWidget";
 import { AgentCommunicationFeed } from "./AgentCommunicationFeed";
+import { AgentMetricsWidget } from "./AgentMetricsWidget";
 
 interface CEODashboardProps {
   className?: string;
@@ -105,7 +106,7 @@ function Sparkline({ data, color = "#22c55e" }: { data: number[]; color?: string
   );
 }
 
-/** Metric Card with optional sparkline */
+/** Metric Card with optional sparkline - Mobile optimized with 44px touch */
 function MetricCard({
   title,
   value,
@@ -113,7 +114,8 @@ function MetricCard({
   subtitle,
   sparklineData,
   sparklineColor,
-  color = "emerald"
+  color = "emerald",
+  pulse = false,
 }: {
   title: string;
   value: string | number;
@@ -122,6 +124,7 @@ function MetricCard({
   sparklineData?: number[];
   sparklineColor?: string;
   color?: "emerald" | "blue" | "yellow" | "red";
+  pulse?: boolean;
 }) {
   const colorMap = {
     emerald: "text-emerald-400",
@@ -131,27 +134,31 @@ function MetricCard({
   };
 
   return (
-    <div className="rounded border border-white/10 bg-zinc-900/50 p-3">
+    <div className={cn(
+      "rounded-lg border border-white/10 bg-zinc-900/50 p-3 sm:p-4 min-h-[80px] transition-all",
+      pulse && "ring-1 ring-emerald-500/30 animate-pulse"
+    )}>
       <div className="flex items-center justify-between">
-        <div className="text-[9px] font-medium uppercase tracking-wider text-white/30">
+        <div className="text-[11px] sm:text-xs font-medium uppercase tracking-wider text-white/40">
           {title}
         </div>
+        {/* Hide sparklines on mobile for cleaner look */}
         {sparklineData && <Sparkline data={sparklineData} color={sparklineColor || "#3b82f6"} />}
       </div>
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className={cn("text-2xl font-bold tabular-nums", colorMap[color])}>
+      <div className="mt-1.5 flex items-baseline gap-1.5">
+        <span className={cn("text-2xl sm:text-3xl font-bold tabular-nums transition-colors", colorMap[color])}>
           {value}
         </span>
-        {unit && <span className="text-sm text-white/50">{unit}</span>}
+        {unit && <span className="text-sm sm:text-base text-white/50">{unit}</span>}
       </div>
       {subtitle && (
-        <div className="mt-0.5 text-[9px] text-white/40">{subtitle}</div>
+        <div className="mt-1 text-[11px] sm:text-xs text-white/50">{subtitle}</div>
       )}
     </div>
   );
 }
 
-/** Agent row with status and utilization */
+/** Agent row with status - Mobile optimized with 44px touch target */
 function AgentRow({ agent, tasksToday, cost, isActive }: {
   agent: AgentDoc;
   tasksToday: number;
@@ -171,26 +178,35 @@ function AgentRow({ agent, tasksToday, cost, isActive }: {
   const dotColor = statusColors[status as keyof typeof statusColors] || statusColors.offline;
 
   return (
-    <div className={cn(
-      "flex items-center gap-3 rounded border border-white/5 bg-zinc-900/30 px-3 py-2",
-      !isActive && "opacity-50"
-    )}>
-      <div className="text-xl">{agent.avatar || "🤖"}</div>
+    <button
+      type="button"
+      className={cn(
+        // 44px min touch target
+        "flex items-center gap-3 rounded-lg border border-white/5 bg-zinc-900/30 px-3 sm:px-4 py-3 min-h-[52px] w-full text-left",
+        "transition-all active:scale-[0.98] touch-manipulation hover:bg-zinc-800/50",
+        !isActive && "opacity-50"
+      )}
+    >
+      <div className="text-xl sm:text-2xl">{agent.avatar || "🤖"}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={cn("h-1.5 w-1.5 rounded-full", dotColor, isActive && status === "busy" && "animate-pulse")} />
-          <span className="text-xs font-semibold uppercase text-white/90">{agent.name}</span>
+          <span className={cn(
+            "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full shrink-0",
+            dotColor,
+            isActive && status === "busy" && "animate-pulse"
+          )} />
+          <span className="text-sm sm:text-base font-semibold uppercase text-white/90">{agent.name}</span>
         </div>
       </div>
       <div className="text-right">
-        <div className="text-sm font-bold text-white">{tasksToday}</div>
-        <div className="text-[9px] text-white/40">${cost.toFixed(2)}</div>
+        <div className="text-base sm:text-lg font-bold text-white tabular-nums">{tasksToday}</div>
+        <div className="text-[11px] sm:text-xs text-white/50">${cost.toFixed(2)}</div>
       </div>
-    </div>
+    </button>
   );
 }
 
-/** Compact Alert Row */
+/** Alert Row - Mobile optimized with touch target */
 function AlertRow({ icon, text, severity }: {
   icon: string;
   text: string;
@@ -203,22 +219,31 @@ function AlertRow({ icon, text, severity }: {
   };
 
   return (
-    <div className={cn("flex items-center gap-2 rounded border px-2 py-1.5 text-xs", colors[severity])}>
-      <span>{icon}</span>
+    <div className={cn(
+      // 44px min touch target
+      "flex items-center gap-3 rounded-lg border px-3 sm:px-4 py-3 min-h-[44px] text-sm sm:text-base font-medium",
+      "transition-all",
+      severity === "critical" && "animate-pulse",
+      colors[severity]
+    )}>
+      <span className="text-lg">{icon}</span>
       <span>{text}</span>
     </div>
   );
 }
 
-/** Activity Item */
-function ActivityItem({ event }: { event: ActivityEvent }) {
+/** Activity Item - Real-time feel with live indicator */
+function ActivityItem({ event, isNew = false }: { event: ActivityEvent; isNew?: boolean }) {
   return (
-    <div className="flex items-start gap-2 text-[11px]">
-      <span className="text-white/30 shrink-0 w-12">
+    <div className={cn(
+      "flex items-start gap-2 sm:gap-3 py-2 px-1 rounded transition-all",
+      isNew && "bg-blue-500/10 animate-pulse"
+    )}>
+      <span className="text-xs sm:text-sm text-white/40 shrink-0 w-12 sm:w-14 tabular-nums">
         {formatDistanceToNow(event.timestamp, { addSuffix: false })}
       </span>
-      <span className="font-medium text-blue-400 uppercase shrink-0">{event.agentName}</span>
-      <span className="text-white/60 truncate">{event.description.slice(0, 60)}</span>
+      <span className="font-semibold text-blue-400 uppercase shrink-0 text-xs sm:text-sm">{event.agentName}</span>
+      <span className="text-sm text-white/70 truncate flex-1">{event.description.slice(0, 60)}</span>
     </div>
   );
 }
@@ -512,6 +537,9 @@ export function CEODashboard({ className }: CEODashboardProps) {
 
           {/* System Health Widget — AGT-281 */}
           <SystemHealthWidget className="mb-3" />
+
+          {/* Agent Metrics Widget — AGT-292 */}
+          <AgentMetricsWidget className="mb-3" />
 
           {/* Quick Stats */}
           <div className="pt-2 border-t border-white/10">
