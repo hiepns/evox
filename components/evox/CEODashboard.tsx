@@ -117,24 +117,6 @@ function MetricCard({ title, value, unit = "", subtitle, sparklineData, sparklin
   );
 }
 
-/** Alert Row */
-function AlertRow({ icon, text, severity }: { icon: string; text: string; severity: "critical" | "warning" | "info" }) {
-  const colors = {
-    critical: "text-red-400 border-red-500/30 bg-red-500/10",
-    warning: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
-    info: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
-  };
-  return (
-    <div className={cn(
-      "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm font-medium",
-      severity === "critical" && "animate-pulse",
-      colors[severity]
-    )}>
-      <span className="text-base">{icon}</span>
-      <span>{text}</span>
-    </div>
-  );
-}
 
 /** Activity Item */
 function ActivityItem({ event }: { event: ActivityEvent }) {
@@ -311,8 +293,26 @@ export function CEODashboard({ className }: CEODashboardProps) {
     offline: "bg-red-500",
   };
 
+  // Has real issues (not just "all clear")
+  const hasIssues = alerts.some(a => a.severity !== "info");
+
   return (
     <div className={cn("flex flex-col h-full overflow-y-auto p-3 sm:p-4 gap-3", className)}>
+
+      {/* Alert Top Bar — compact single-line, only when issues exist */}
+      {hasIssues && (
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 overflow-x-auto">
+          {alerts.filter(a => a.severity !== "info").map((alert, i) => (
+            <span key={i} className={cn(
+              "flex items-center gap-1.5 text-xs font-medium shrink-0",
+              alert.severity === "critical" ? "text-red-400" : "text-yellow-400"
+            )}>
+              <span>{alert.icon}</span>
+              <span>{alert.text}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Row 1: 4 Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
@@ -355,15 +355,6 @@ export function CEODashboard({ className }: CEODashboardProps) {
           </div>
         </div>
       </div>
-
-      {/* Row 2: Alerts (only if issues) */}
-      {alerts.length > 0 && (
-        <div className="space-y-1.5">
-          {alerts.map((alert, i) => (
-            <AlertRow key={i} {...alert} />
-          ))}
-        </div>
-      )}
 
       {/* Row 3: Team Strip — single line */}
       <div className="rounded-lg border border-white/10 bg-zinc-900/50 px-3 py-2.5 flex items-center gap-4 flex-wrap">
