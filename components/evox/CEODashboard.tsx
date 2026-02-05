@@ -2,11 +2,13 @@
 
 /**
  * AGT-269: CEO Dashboard — Single Glanceable View
+ * AGT-272: Git Activity Feed — Recent commits from agents
  *
  * Unified dashboard merging CEO + Elon metrics:
  * - North Star metrics at top (Automation, Velocity, Cost, Team Health)
  * - Agent status with utilization bars
  * - Real-time activity feed
+ * - Git commits from agents
  * - Critical alerts
  * - All visible without scrolling
  */
@@ -56,6 +58,17 @@ type ActivityEvent = {
   description: string;
   timestamp: number;
   category?: string;
+};
+
+type GitCommit = {
+  _id: string;
+  shortHash: string;
+  message: string;
+  agentName?: string;
+  linkedTicketId?: string;
+  url?: string;
+  pushedAt: number;
+  branch: string;
 };
 
 /** Sparkline component for trends */
@@ -206,6 +219,35 @@ function ActivityItem({ event }: { event: ActivityEvent }) {
   );
 }
 
+/** Git Commit Item — AGT-272 */
+function GitCommitItem({ commit }: { commit: GitCommit }) {
+  const messageFirstLine = commit.message.split('\n')[0].slice(0, 50);
+  const hasMore = commit.message.length > 50 || commit.message.includes('\n');
+
+  return (
+    <a
+      href={commit.url || "#"}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-start gap-2 text-[11px] hover:bg-white/5 rounded px-1 py-0.5 -mx-1 transition-colors"
+    >
+      <span className="text-white/30 shrink-0 w-10">
+        {formatDistanceToNow(commit.pushedAt, { addSuffix: false })}
+      </span>
+      <code className="text-emerald-400 font-mono shrink-0">{commit.shortHash}</code>
+      <span className="font-medium text-purple-400 uppercase shrink-0 text-[10px]">
+        {commit.agentName || "—"}
+      </span>
+      <span className="text-white/60 truncate flex-1">
+        {messageFirstLine}{hasMore ? "…" : ""}
+      </span>
+      {commit.linkedTicketId && (
+        <span className="text-blue-400 shrink-0">{commit.linkedTicketId}</span>
+      )}
+    </a>
+  );
+}
+
 /** Main CEO Dashboard */
 export function CEODashboard({ className }: CEODashboardProps) {
   const now = new Date().getTime();
@@ -232,7 +274,7 @@ export function CEODashboard({ className }: CEODashboardProps) {
       const dayStart = startOfDay(subDays(new Date(), i)).getTime();
       const dayEnd = dayStart + day24h;
       const dayCompleted = tasks.filter(t =>
-        t.status === "done" &&
+        t.status?.toLowerCase() === "done" &&
         t.completedAt &&
         t.completedAt >= dayStart &&
         t.completedAt < dayEnd
@@ -328,8 +370,8 @@ export function CEODashboard({ className }: CEODashboardProps) {
 
     // Blocked urgent tasks
     const blockedUrgent = tasks.filter(t =>
-      t.priority === "urgent" &&
-      (t.status === "backlog" || t.status === "todo")
+      t.priority?.toLowerCase() === "urgent" &&
+      (t.status?.toLowerCase() === "backlog" || t.status?.toLowerCase() === "todo")
     );
 
     if (blockedUrgent.length > 0) {
@@ -342,7 +384,7 @@ export function CEODashboard({ className }: CEODashboardProps) {
 
     // Stale in-progress tasks
     const staleInProgress = tasks.filter(t =>
-      (t.status === "in_progress" || t.status === "review") &&
+      (t.status?.toLowerCase() === "in_progress" || t.status?.toLowerCase() === "review") &&
       (now - t.updatedAt > 24 * 60 * 60 * 1000)
     );
 
