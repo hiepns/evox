@@ -2853,6 +2853,43 @@ http.route({
 });
 
 /**
+ * GET /activity/mobile — Mobile-optimized activity feed
+ * Query params: limit (max 30), cursor (timestamp for pagination)
+ * Returns minimal payload for <500ms load on mobile
+ */
+http.route({
+  path: "/activity/mobile",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "20"), 30);
+      const cursorParam = url.searchParams.get("cursor");
+      const cursor = cursorParam ? parseInt(cursorParam) : undefined;
+
+      const result = await ctx.runQuery(api.activityEvents.listMobile, {
+        limit,
+        cursor,
+      });
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Cache-Control": "public, max-age=10", // 10s cache for mobile
+        },
+      });
+    } catch (error) {
+      console.error("Mobile activity feed error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
  * POST /postToChannel — Post a message to a team channel
  * Body: { from: string, channel: string, message: string }
  * AGT-271: Now parses @mentions and creates notifications

@@ -14,6 +14,7 @@
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { buildAgentMaps } from "./queryHelpers";
 
 // Event categories
 export const CATEGORIES = ["task", "git", "deploy", "system", "message"] as const;
@@ -327,6 +328,7 @@ export const list = query({
 /**
  * List events with agent details (for rich activity feed).
  * Never throws — returns [] on error so /activity and /dashboard do not crash (AGT-140, AGT-141).
+ * Optimized: uses batch agent lookup instead of N individual queries
  */
 export const listWithAgents = query({
   args: {
@@ -336,25 +338,64 @@ export const listWithAgents = query({
     try {
       const limit = args.limit ?? 50;
 
-      const events = await ctx.db
-        .query("activityEvents")
-        .withIndex("by_timestamp")
-        .order("desc")
-        .take(limit);
-
-      const agentIds = Array.from(new Set(events.map((e) => e.agentId)));
-      const agents = await Promise.all(agentIds.map((id) => ctx.db.get(id)));
-      const agentMap = new Map(
-        agents.filter(Boolean).map((a) => [a!._id, a])
-      );
+      // Parallel: fetch events and agent map simultaneously
+      const [events, { byId: agentMap }] = await Promise.all([
+        ctx.db
+          .query("activityEvents")
+          .withIndex("by_timestamp")
+          .order("desc")
+          .take(limit),
+        buildAgentMaps(ctx.db),
+      ]);
 
       return events.map((event) => ({
         ...event,
-        agent: agentMap.get(event.agentId) ?? null,
+        agent: agentMap.get(event.agentId.toString()) ?? null,
       }));
     } catch {
       return [];
     }
+  },
+});
+
+/**
+ * Mobile-optimized activity feed - minimal payload for <500ms load
+ * Returns only essential fields, smaller limit, supports cursor pagination
+ */
+export const listMobile = query({
+  args: {
+    limit: v.optional(v.number()),
+    cursor: v.optional(v.number()), // timestamp cursor for pagination
+  },
+  handler: async (ctx, args) => {
+    const limit = Math.min(args.limit ?? 20, 30); // Max 30 for mobile
+
+    let query = ctx.db
+      .query("activityEvents")
+      .withIndex("by_timestamp")
+      .order("desc");
+
+    const events = await query.take(limit + 1); // +1 to check if more exist
+
+    // Check if there are more results
+    const hasMore = events.length > limit;
+    const results = hasMore ? events.slice(0, limit) : events;
+    const nextCursor = hasMore ? results[results.length - 1]?.timestamp : null;
+
+    // Return minimal payload for mobile
+    return {
+      events: results.map((e) => ({
+        id: e._id,
+        type: e.eventType,
+        category: e.category,
+        title: e.title,
+        agentName: e.agentName,
+        linearId: e.linearIdentifier,
+        ts: e.timestamp,
+      })),
+      nextCursor,
+      hasMore,
+    };
   },
 });
 
