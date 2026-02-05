@@ -20,7 +20,7 @@ type ActivityEvent = {
 };
 
 /** AGT-181: Activity feed with filter tabs */
-const EVENT_FILTERS = ["all", "completed", "created", "moved"] as const;
+const EVENT_FILTERS = ["all", "task", "message", "system"] as const;
 type EventFilter = (typeof EVENT_FILTERS)[number];
 
 /** Event type icons and colors - Linear style */
@@ -58,13 +58,13 @@ export function ActivityPage() {
   // Real-time subscription to activity events
   const events = useQuery(api.activityEvents.list, { limit: 50 });
 
-  // Filter events based on selected filter
+  // Filter events based on selected filter (by category)
   const filteredEvents = (events as ActivityEvent[] | undefined)?.filter((event) => {
     if (filter === "all") return true;
-    const eventType = event.eventType ?? "";
-    if (filter === "completed") return eventType === "completed";
-    if (filter === "created") return eventType === "created";
-    if (filter === "moved") return eventType === "status_change" || eventType === "moved";
+    const category = event.category ?? "";
+    if (filter === "task") return category === "task";
+    if (filter === "message") return category === "message";
+    if (filter === "system") return category === "system" || category === "git" || category === "deploy";
     return true;
   }) ?? [];
 
@@ -85,7 +85,7 @@ export function ActivityPage() {
                   : "border-[#222222] text-[#888888] hover:border-[#333333] hover:text-[#aaaaaa]"
               )}
             >
-              {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "all" ? "All" : f === "task" ? "Tasks" : f === "message" ? "Messages" : "System"}
             </button>
           ))}
         </div>
