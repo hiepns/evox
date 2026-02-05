@@ -7,14 +7,15 @@
 ## 🎯 Active Goals
 
 ### Goal 1: Agent Communication (P0)
-**Status:** 🔄 In Progress
+**Status:** 🔄 In Progress → Waiting on Human
 **Requirement:** MAX cần tự viết ticket được
 **Progress:**
 - ✅ Linear API key created
 - ✅ `/api/agent/create-ticket` endpoint ready
 - ✅ MAX config updated
-- ⏳ Deploy to Vercel (need LINEAR_API_KEY env)
-- ⏳ Test MAX creating tickets autonomously
+- ✅ MAX can create tickets via Linear MCP (working!)
+- ⏳ AGT-270: Deploy to Vercel (need LINEAR_API_KEY env) — Human required
+- ⏳ Test MAX creating tickets via HTTP API
 
 ### Goal 2: CEO Dashboard — Elon Style (P1)
 **Status:** 🔄 In Progress
@@ -67,10 +68,10 @@
 
 | Priority | Ticket | Description | Assignee | Status |
 |----------|--------|-------------|----------|--------|
-| P0 | AGT-NEXT-1 | Enable MAX to create tickets via API | SAM → MAX | In Progress |
-| P1 | AGT-NEXT-2 | CEO Dashboard improvements | LEO | Pending |
-| P1 | AGT-NEXT-3 | Per-agent ticket completion stats | SAM/LEO | New |
-| P2 | AGT-NEXT-4 | Auto-sync CEO backlog to dashboard | SAM | New |
+| P0 | AGT-270 | Deploy create-ticket API (LINEAR_API_KEY) | Human | ⏳ Waiting |
+| P1 | AGT-268 | Per-agent ticket completion stats | SAM | 📋 Todo |
+| P1 | AGT-269 | CEO Dashboard single glanceable view | LEO | 📋 Todo |
+| P2 | — | Auto-sync CEO backlog to dashboard | SAM | Future |
 
 ---
 
