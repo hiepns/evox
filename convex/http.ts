@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { api } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 
 const http = httpRouter();
@@ -78,7 +78,7 @@ http.route({
 
       if (event === "push") {
         const commits = body.commits || [];
-        const results = [];
+        const results: Array<{ ticket: string; completed: boolean }> = [];
 
         for (const commit of commits) {
           const match = commit.message.match(/closes?\s+(AGT-\d+)/i);
@@ -279,17 +279,17 @@ http.route({
       const skills = await ctx.runQuery(api.skills.getByAgent, { agentId });
 
       // 5. Get task if ticketId provided
-      let task = null;
+      let task: Doc<"tasks"> | null = null;
       if (ticketId) {
         // Find task by linearIdentifier (AGT-XXX format)
         const allTasks = await ctx.runQuery(api.tasks.list, {});
         task = allTasks.find(
-          (t: any) => t.linearIdentifier?.toLowerCase() === ticketId.toLowerCase()
-        );
+          (t) => t.linearIdentifier?.toLowerCase() === ticketId.toLowerCase()
+        ) ?? null;
       }
 
       // 6. Get current task if agent has one assigned
-      let currentTask = null;
+      let currentTask: Doc<"tasks"> | null = null;
       if (agent.currentTask) {
         currentTask = await ctx.runQuery(api.tasks.get, { id: agent.currentTask });
       }
@@ -472,12 +472,12 @@ http.route({
       const memoryContext = await ctx.runQuery(api.agentMemory.getBootContext, { agentId });
       const skills = await ctx.runQuery(api.skills.getByAgent, { agentId });
 
-      let task = null;
+      let task: Doc<"tasks"> | null = null;
       if (ticketId) {
         const allTasks = await ctx.runQuery(api.tasks.list, {});
         task = allTasks.find(
-          (t: any) => t.linearIdentifier?.toLowerCase() === ticketId.toLowerCase()
-        );
+          (t) => t.linearIdentifier?.toLowerCase() === ticketId.toLowerCase()
+        ) ?? null;
       }
 
       // Build text-only response for CLI
@@ -828,7 +828,7 @@ http.route({
       }
 
       // Find task by linearIdentifier if provided
-      let relatedTaskId = undefined;
+      let relatedTaskId: Id<"tasks"> | undefined = undefined;
       if (taskId) {
         if (taskId.toUpperCase().startsWith("AGT-")) {
           const allTasks = await ctx.runQuery(api.tasks.list, {});
@@ -839,7 +839,8 @@ http.route({
             relatedTaskId = task._id;
           }
         } else {
-          relatedTaskId = taskId;
+          // Assume taskId is already a valid Convex ID
+          relatedTaskId = taskId as Id<"tasks">;
         }
       }
 
