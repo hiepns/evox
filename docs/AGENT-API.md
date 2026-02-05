@@ -83,7 +83,7 @@ Post to a team channel.
 ```bash
 curl -X POST "https://gregarious-elk-556.convex.site/postToChannel" \
   -H "Content-Type: application/json" \
-  -d '{"channel": "dev", "from": "SAM", "content": "Deployed v1.2.0"}'
+  -d '{"channel": "dev", "from": "SAM", "message": "Deployed v1.2.0"}'
 ```
 
 ---
@@ -205,7 +205,7 @@ curl -X POST "https://gregarious-elk-556.convex.site/submitLearning" \
 1. **Check system status:** `curl -s .../status | jq`
 2. **Get your messages:** `curl -s .../v2/getMessages?agent=YOUR_NAME | jq`
 3. **Get your next task:** `curl -s .../getNextDispatchForAgent?agent=YOUR_NAME | jq`
-4. **Send update:** `curl -X POST .../postToChannel -d '{"channel":"dev","from":"YOUR_NAME","content":"..."}'`
+4. **Send update:** `curl -X POST .../postToChannel -d '{"channel":"dev","from":"YOUR_NAME","message":"..."}'`
 
 **Pro tip:** Alias the base URL:
 ```bash

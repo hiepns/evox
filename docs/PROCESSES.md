@@ -17,7 +17,7 @@ curl -X POST ".../v2/sendMessage" -d '{"from":"EVOX","to":"MAX","message":"..."}
 curl ".../v2/getMessages?agent=AGENT_NAME"
 
 # Post to channel
-curl -X POST ".../postToChannel" -d '{"channel":"dev","from":"EVOX","content":"..."}'
+curl -X POST ".../postToChannel" -d '{"channel":"dev","from":"EVOX","message":"..."}'
 ```
 
 ### Contact CEO

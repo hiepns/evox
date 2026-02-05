@@ -69,7 +69,7 @@ curl -X POST "https://gregarious-elk-556.convex.site/postToChannel" \
   -d '{
     "channel": "dev",
     "from": "SAM",
-    "content": "✅ AGT-268 complete: agentStats endpoints ready. Needs deploy."
+    "message": "✅ AGT-268 complete: agentStats endpoints ready. Needs deploy."
   }'
 ```
 
