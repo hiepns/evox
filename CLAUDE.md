@@ -116,3 +116,34 @@ npx convex run agentActions:completeTask '{"agent":"sam","ticket":"AGT-XX","acti
 2. **Pre-commit check** — Grep for secrets trước khi commit
 3. **Review LESSONS.md** — Học từ sai lầm trước
 
+
+---
+
+## Session End Protocol (MANDATORY)
+
+Trước khi restart session, PHẢI chạy:
+```bash
+./scripts/restart-agent.sh <agent>
+```
+
+Script sẽ tự động:
+1. Capture terminal output
+2. Hỏi agent 3 lessons learned
+3. Log to `docs/sessions/YYYY-MM-DD-<agent>.md`
+4. Post to Convex activity
+5. THEN restart
+
+**KHÔNG được restart bằng cách khác!**
+
+### Lessons Format
+```markdown
+1. **Keyword** — Giải thích ngắn gọn, actionable
+2. **Keyword** — Specific, không generic
+3. **Keyword** — Có thể apply cho agents khác
+```
+
+### Org-wide Lessons
+Nếu lesson quan trọng cho tất cả agents:
+1. Copy vào `docs/LESSONS.md`
+2. Thêm date và context
+3. Commit với message: `docs: Add lesson - [keyword]`
