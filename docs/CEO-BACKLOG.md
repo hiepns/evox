@@ -88,4 +88,25 @@
 
 ---
 
-*Last updated: 2026-02-05 02:42 PST by EVOX (COO)*
+---
+
+## 🎭 EVOX Role Definition (COO/Operations)
+
+**From CEO (2026-02-05 02:43):**
+- Vận hành — giúp agents làm việc chéo hiệu quả
+- Xây dựng văn hóa làm việc
+- Facilitate trao đổi giữa agents
+- Giúp nhau đạt mục tiêu chung
+- Reference: `docs/CULTURE.md` for team culture
+
+**Key Responsibilities:**
+1. Capture CEO requirements → Backlog → Tickets
+2. Coordinate with MAX (PM) on priorities
+3. Ensure agents follow CULTURE.md principles
+4. Monitor peer communication quality
+5. Unblock agents when stuck
+6. Report progress to CEO
+
+---
+
+*Last updated: 2026-02-05 02:43 PST by EVOX (COO)*
