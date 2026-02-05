@@ -422,6 +422,11 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     result: v.optional(v.string()),
     error: v.optional(v.string()),
+    // AGT-308: Auto-Retry with Exponential Backoff
+    retryCount: v.optional(v.number()),          // Number of retries attempted
+    maxRetries: v.optional(v.number()),           // Max retries (default 3)
+    nextRetryAt: v.optional(v.number()),          // Scheduled retry timestamp
+    originalDispatchId: v.optional(v.id("dispatches")), // Link to original if this is a retry
   })
     .index("by_status", ["status"])
     .index("by_agent", ["agentId", "status"])

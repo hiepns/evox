@@ -1,7 +1,15 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { internal } from "./_generated/api";
+import { internal, api } from "./_generated/api";
 import { batchEnrichWithAgents, getAgentByName } from "./queryHelpers";
+
+// AGT-308: Exponential backoff delays (in ms)
+const RETRY_BACKOFF_MS = [
+  1 * 60 * 1000,   // 1 minute
+  5 * 60 * 1000,   // 5 minutes
+  15 * 60 * 1000,  // 15 minutes
+] as const;
+const MAX_RETRIES = 3;
 
 /**
  * Phase 5: Execution Engine - Dispatch Management
@@ -92,6 +100,7 @@ export const complete = mutation({
 });
 
 // Mark dispatch as failed with error
+// AGT-308: Now includes auto-retry with exponential backoff
 export const fail = mutation({
   args: {
     dispatchId: v.id("dispatches"),
@@ -104,11 +113,39 @@ export const fail = mutation({
       throw new Error(`Cannot fail dispatch with status: ${dispatch.status}`);
     }
 
+    const currentRetry = dispatch.retryCount ?? 0;
+    const maxRetries = dispatch.maxRetries ?? MAX_RETRIES;
+
     await ctx.db.patch(dispatchId, {
       status: "failed",
       completedAt: Date.now(),
       error,
+      retryCount: currentRetry,
     });
+
+    // AGT-308: Auto-retry with exponential backoff
+    if (currentRetry < maxRetries) {
+      const backoffMs = RETRY_BACKOFF_MS[Math.min(currentRetry, RETRY_BACKOFF_MS.length - 1)];
+      const nextRetryAt = Date.now() + backoffMs;
+
+      await ctx.db.patch(dispatchId, { nextRetryAt });
+
+      await ctx.scheduler.runAfter(backoffMs, internal.dispatches.retryFailedDispatch, {
+        originalDispatchId: dispatchId,
+      });
+
+      console.log(
+        `[AutoRetry] Dispatch ${dispatchId} failed (attempt ${currentRetry + 1}/${maxRetries}). Retrying in ${backoffMs / 60000}m.`
+      );
+    } else {
+      // Max retries exhausted — escalate to MAX
+      await ctx.scheduler.runAfter(0, internal.dispatches.escalateFailedDispatch, {
+        dispatchId,
+      });
+      console.log(
+        `[AutoRetry] Dispatch ${dispatchId} failed after ${maxRetries} retries. Escalating to MAX.`
+      );
+    }
 
     // AGT-317: Check if this failure blocks other tasks
     let linearIdentifier: string | undefined;
@@ -534,5 +571,112 @@ export const createPRReviewDispatch = mutation({
 
     console.log(`Created PR review dispatch for Quinn: PR #${args.prNumber}`);
     return dispatchId;
+  },
+});
+
+// ─── AGT-308: Auto-Retry Infrastructure ──────────────────────────────────
+
+/**
+ * Internal mutation: re-queue a failed dispatch as a new pending dispatch.
+ * Preserves the original command, payload, agent, and increments retryCount.
+ */
+export const retryFailedDispatch = internalMutation({
+  args: {
+    originalDispatchId: v.id("dispatches"),
+  },
+  handler: async (ctx, { originalDispatchId }) => {
+    const original = await ctx.db.get(originalDispatchId);
+    if (!original) {
+      console.log(`[AutoRetry] Original dispatch ${originalDispatchId} not found, skipping.`);
+      return;
+    }
+    if (original.status !== "failed") {
+      console.log(`[AutoRetry] Dispatch ${originalDispatchId} is ${original.status}, not failed. Skipping retry.`);
+      return;
+    }
+
+    const nextRetry = (original.retryCount ?? 0) + 1;
+
+    // Create a new dispatch with incremented retryCount
+    const retryId = await ctx.db.insert("dispatches", {
+      agentId: original.agentId,
+      command: original.command,
+      payload: original.payload,
+      priority: original.priority,
+      isUrgent: original.isUrgent,
+      status: "pending",
+      createdAt: Date.now(),
+      retryCount: nextRetry,
+      maxRetries: original.maxRetries ?? MAX_RETRIES,
+      originalDispatchId: originalDispatchId,
+    });
+
+    // Clear the nextRetryAt on the original
+    await ctx.db.patch(originalDispatchId, { nextRetryAt: undefined });
+
+    console.log(
+      `[AutoRetry] Retry #${nextRetry} created (${retryId}) for original ${originalDispatchId}.`
+    );
+  },
+});
+
+/**
+ * Internal action: escalate a permanently failed dispatch to MAX (PM).
+ * Called after max retries are exhausted.
+ */
+export const escalateFailedDispatch = internalAction({
+  args: {
+    dispatchId: v.id("dispatches"),
+  },
+  handler: async (ctx, { dispatchId }) => {
+    const dispatch = await ctx.runQuery(internal.dispatches.getDispatchById, {
+      dispatchId,
+    });
+    if (!dispatch) return;
+
+    // Get agent name for the message
+    const agent = await ctx.runQuery(internal.dispatches.getAgentById, {
+      agentId: dispatch.agentId,
+    });
+
+    let taskLabel = "unknown";
+    if (dispatch.payload) {
+      try {
+        const payload = JSON.parse(dispatch.payload);
+        taskLabel = payload.identifier || payload.title || dispatch.command;
+      } catch {
+        taskLabel = dispatch.command;
+      }
+    }
+
+    const agentName = agent?.name ?? "unknown agent";
+    const retries = dispatch.retryCount ?? 0;
+
+    await ctx.runMutation(api.messaging.sendDM, {
+      from: "system",
+      to: "max",
+      content: `[AutoRetry FAILED] Dispatch for ${agentName} exhausted ${retries} retries.\nTask: ${taskLabel}\nLast error: ${dispatch.error ?? "unknown"}\nNeeds manual intervention.`,
+      priority: "urgent" as const,
+    });
+  },
+});
+
+/**
+ * Internal query: get dispatch by ID (for use in actions).
+ */
+export const getDispatchById = internalQuery({
+  args: { dispatchId: v.id("dispatches") },
+  handler: async (ctx, { dispatchId }) => {
+    return await ctx.db.get(dispatchId);
+  },
+});
+
+/**
+ * Internal query: get agent by ID (for use in actions).
+ */
+export const getAgentById = internalQuery({
+  args: { agentId: v.id("agents") },
+  handler: async (ctx, { agentId }) => {
+    return await ctx.db.get(agentId);
   },
 });
