@@ -22,12 +22,31 @@ interface ActivityFeedProps {
 const eventColors: Record<string, string> = {
   channel_message: "bg-blue-500",
   dm_sent: "bg-purple-500",
+  dm_received: "bg-blue-500",
+  dm_read: "bg-zinc-500",
+  dm_replied: "bg-cyan-500",
   task_completed: "bg-green-500",
   commit: "bg-emerald-500",
   push: "bg-emerald-500",
   pr_merged: "bg-purple-500",
   deploy: "bg-green-500",
 };
+
+const eventIcons: Record<string, string> = {
+  dm_sent: "\u{1F4E8}",
+  dm_received: "\u{1F4EC}",
+  dm_read: "\u{1F441}\uFE0F",
+  dm_replied: "\u{21A9}\uFE0F",
+};
+
+function getEventIcon(eventType?: string): string | null {
+  if (!eventType) return null;
+  const type = eventType.toLowerCase();
+  for (const [key, icon] of Object.entries(eventIcons)) {
+    if (type.includes(key)) return icon;
+  }
+  return null;
+}
 
 function getEventColor(eventType?: string): string {
   if (!eventType) return "bg-zinc-600";
@@ -75,10 +94,14 @@ export function ActivityFeed({ activities, limit = 10 }: ActivityFeedProps) {
             key={activity.id || i}
             className="bg-zinc-900/50 active:bg-zinc-800 sm:hover:bg-zinc-900 rounded-lg p-4 sm:p-3 flex items-start gap-3 transition-colors border border-transparent sm:hover:border-zinc-800 min-h-[56px]"
           >
-            {/* Event dot */}
-            <div
-              className={`w-2.5 h-2.5 sm:w-2 sm:h-2 rounded-full mt-1 shrink-0 ${getEventColor(activity.eventType)}`}
-            />
+            {/* Event indicator: icon for DMs, dot for others */}
+            {getEventIcon(activity.eventType) ? (
+              <span className="text-sm sm:text-xs mt-0.5 shrink-0">{getEventIcon(activity.eventType)}</span>
+            ) : (
+              <div
+                className={`w-2.5 h-2.5 sm:w-2 sm:h-2 rounded-full mt-1 shrink-0 ${getEventColor(activity.eventType)}`}
+              />
+            )}
 
             {/* Content */}
             <div className="flex-1 min-w-0">

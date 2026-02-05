@@ -42,7 +42,7 @@ type GitCommit = {
 
 type FeedItem = {
   id: string;
-  type: "commit" | "task" | "deploy";
+  type: "commit" | "task" | "deploy" | "comms";
   icon: string;
   agent: string;
   action: string;
@@ -53,7 +53,7 @@ type FeedItem = {
 };
 
 // NOISE FILTERS
-const NOISE_EVENT_TYPES = ["channel_message", "heartbeat", "message", "posted", "dm"];
+const NOISE_EVENT_TYPES = ["channel_message", "heartbeat", "message", "posted"];
 const NOISE_PATTERNS = [
   /posted to #/i,
   /heartbeat/i,
@@ -64,7 +64,15 @@ const NOISE_PATTERNS = [
 ];
 
 // HIGH IMPACT event types
-const IMPACT_EVENTS = ["completed", "push", "pr_merged", "deploy_success", "created"];
+const IMPACT_EVENTS = ["completed", "push", "pr_merged", "deploy_success", "created", "dm_sent", "dm_received", "dm_read", "dm_replied"];
+
+// DM event type → icon + label
+const DM_ICONS: Record<string, { icon: string; label: string; color: string }> = {
+  dm_sent: { icon: "\u{1F4E8}", label: "sent", color: "text-purple-400" },
+  dm_received: { icon: "\u{1F4EC}", label: "received", color: "text-blue-400" },
+  dm_read: { icon: "\u{1F441}\uFE0F", label: "read", color: "text-zinc-400" },
+  dm_replied: { icon: "\u{21A9}\uFE0F", label: "replied", color: "text-cyan-400" },
+};
 
 export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
   // Fetch activity events
@@ -116,8 +124,16 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
         let icon = "-";
         let action = eventType;
         let color = "text-zinc-400";
+        let feedType: FeedItem["type"] = "task";
 
-        if (eventType.includes("completed")) {
+        // DM communication events
+        const dmInfo = DM_ICONS[eventType];
+        if (dmInfo) {
+          icon = dmInfo.icon;
+          action = dmInfo.label;
+          color = dmInfo.color;
+          feedType = "comms";
+        } else if (eventType.includes("completed")) {
           icon = "!";
           action = "completed";
           color = "text-emerald-400";
@@ -137,7 +153,7 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
 
         items.push({
           id: event._id,
-          type: "task",
+          type: feedType,
           icon,
           agent: event.agentName?.toUpperCase() || "?",
           action,
