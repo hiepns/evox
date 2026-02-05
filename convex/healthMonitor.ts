@@ -109,7 +109,6 @@ async function checkEndpoint(endpoint: { name: string; url: string; timeout: num
  */
 async function sendTelegramAlert(message: string): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.log("[HealthMonitor] Telegram not configured, skipping alert");
     return false;
   }
 
@@ -193,7 +192,6 @@ export const createAutoFixDispatch = internalMutation({
       .first();
 
     if (!sam) {
-      console.log("[HealthMonitor] Sam agent not found, cannot auto-dispatch");
       return null;
     }
 
@@ -212,7 +210,6 @@ export const createAutoFixDispatch = internalMutation({
       createdAt: Date.now(),
     });
 
-    console.log(`[HealthMonitor] Created auto-fix dispatch ${dispatchId} for Sam`);
     return dispatchId;
   },
 });
