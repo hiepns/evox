@@ -55,6 +55,7 @@
 
 ## Completed Today (Session 16-24)
 
+- ✅ AGT-274: Terminal UI for Agents — P0 CEO visibility (Sam)
 - ✅ AGT-255: Auto-Wake System — Linear status closed (Max)
 - ✅ Task cost tracking — Queries + HTTP endpoints (Sam)
 - ✅ AGT-80: Git activity feed (Sam)
