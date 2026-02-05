@@ -6,13 +6,22 @@
 
 ---
 
+## Strategic Direction
+
+**Next North Star: Self-Healing System**
+> "Agents detect problems and fix them before humans notice"
+
+Rationale: Self-healing is prerequisite for Agent-Led Development and Revenue-Generating Agents. Build resilience before ambition.
+
+---
+
 ## Overview
 
 | Phase | Name | Status | Focus |
 |-------|------|--------|-------|
 | **1** | Foundation | 🟢 Current | Agent communication, visibility, coordination |
-| **2** | Autonomy | 🟡 Next | Self-directed work, self-healing, auto-dispatch |
-| **3** | Scale | ⚪ Future | More agents, integrations, multi-repo |
+| **2** | Self-Healing | 🟡 Next | Auto-retry, rollback, blocker detection, learning |
+| **3** | Agent-Led | ⚪ Future | Feature proposals, voting, minimal-oversight shipping |
 
 ---
 
@@ -67,54 +76,52 @@
 
 ---
 
-## Phase 2: Autonomy (Mar 2026)
+## Phase 2: Self-Healing System (Mar 2026)
 
-> **Goal:** Agents find their own work, self-heal when stuck, minimal human intervention.
+> **Goal:** Agents detect problems, fix them automatically, and learn from mistakes.
 
-### Planned Features
+### Tickets Created
 
-| ID | Feature | Owner | Description |
-|----|---------|-------|-------------|
-| F2.1 | Auto-Dispatch Engine | Sam | Assign tasks based on skills & availability |
-| F2.2 | Work Discovery | All | Agents scan backlog for unassigned work |
-| F2.3 | Self-Healing | Sam | Retry failed tasks, escalate after N attempts |
-| F2.4 | Smart Handoffs | Max | Automatic handoff when task crosses territory |
-| F2.5 | Blocker Detection | Max | Identify and escalate blockers automatically |
-| F2.6 | Quinn Auto-Review | Quinn | QA triggered automatically on PR creation |
-| F2.7 | Context Sharing | All | Agents share learnings automatically |
-| F2.8 | Self-Improvement Loop | All | Agents analyze performance, suggest improvements |
+| Ticket | Feature | Owner | Priority |
+|--------|---------|-------|----------|
+| [AGT-276](https://linear.app/affitorai/issue/AGT-276) | Auto-Retry Failed Tasks | Sam | High |
+| [AGT-277](https://linear.app/affitorai/issue/AGT-277) | Git Rollback Mechanism | Sam | High |
+| [AGT-278](https://linear.app/affitorai/issue/AGT-278) | Auto-Detect Blockers & Escalate | Max | High |
+| [AGT-279](https://linear.app/affitorai/issue/AGT-279) | Quinn Auto-Review on PR | Quinn | High |
+| [AGT-280](https://linear.app/affitorai/issue/AGT-280) | Self-Improvement Loop | All | Medium |
+| [AGT-281](https://linear.app/affitorai/issue/AGT-281) | Health & Error Dashboard | Leo | Medium |
 
 ### Success Criteria
 
-- [ ] Agents pick up work within 5 min of availability
-- [ ] CEO intervention <1x per day
-- [ ] Self-heal success rate >80%
-- [ ] Zero orphan tasks (always assigned)
-- [ ] Cost per task < $1
+- [ ] Failed tasks auto-retry with 80%+ success rate
+- [ ] Breaking commits auto-rollback within 2 min
+- [ ] Stuck agents escalated within 30 min
+- [ ] Every PR auto-reviewed by Quinn
+- [ ] Same mistake not repeated > 2x
+- [ ] CEO intervention < 1x per day
 
 ---
 
-## Phase 3: Scale (May 2026+)
+## Phase 3: Agent-Led Development (May 2026+)
 
-> **Goal:** Expand team, support multiple repos, integrate with external tools.
+> **Goal:** Agents propose features, prioritize, and ship with minimal human oversight.
 
-### Planned Features
+### Tickets Created
 
-| ID | Feature | Description |
-|----|---------|-------------|
-| F3.1 | New Agent Onboarding | Automated setup for Alex, Ella, Nova |
-| F3.2 | Multi-Repo Support | Agents work across multiple repositories |
-| F3.3 | Slack Integration | Notifications in Slack |
-| F3.4 | GitHub PR Integration | Auto-link PRs to Linear tickets |
-| F3.5 | Knowledge Base | Shared learnings searchable by all |
-| F3.6 | A/B Testing Approaches | Compare agent strategies |
+| Ticket | Feature | Owner | Priority |
+|--------|---------|-------|----------|
+| [AGT-282](https://linear.app/affitorai/issue/AGT-282) | User Feedback Analysis | Maya | Medium |
+| [AGT-283](https://linear.app/affitorai/issue/AGT-283) | Feature Proposal System | All | Medium |
+| [AGT-284](https://linear.app/affitorai/issue/AGT-284) | Priority Voting | Max | Low |
+| [AGT-288](https://linear.app/affitorai/issue/AGT-288) | Minimal-Oversight Shipping | Sam/Leo | Low |
 
 ### Success Criteria
 
-- [ ] 8+ agents operating simultaneously
-- [ ] 3+ repos managed
-- [ ] External stakeholders receive updates automatically
-- [ ] 20+ tasks completed per day
+- [ ] Agents analyze user feedback weekly
+- [ ] 1+ agent-proposed feature shipped per month
+- [ ] Features ship with QA approval only (no PM gate)
+- [ ] CEO intervention < 1x per week
+- [ ] Zero production incidents from auto-deploys
 
 ---
 
@@ -170,6 +177,9 @@ All goals achieved:
 
 | Date | Decision | Rationale |
 |------|----------|-----------|
+| Feb 5 | Next North Star: Self-Healing System | Foundation for Agent-Led Development; lower risk |
+| Feb 5 | Phase 2 = Self-Healing, Phase 3 = Agent-Led | Logical progression: visibility → resilience → autonomy |
+| Feb 5 | Created 10 new tickets (AGT-276 to AGT-288) | Concrete roadmap for next 3 months |
 | Feb 5 | Restructured roadmap to 3 phases | CEO clarity request |
 | Feb 5 | Phase 1 focus: visibility + communication | Foundation before autonomy |
 | Feb 4 | Quinn can fix simple bugs | Faster iteration |
