@@ -104,3 +104,27 @@ Sau khi CEO hoàn thành, team sẽ tự chạy 24/7:
 ---
 
 _Last updated: 2026-02-05 03:50 PST_
+
+---
+
+## Vercel 401 Issue — Current Workaround
+
+**Problem:** Vercel Preview có Password Protection, cần manual disable.
+
+**Immediate Solutions (no CEO action needed):**
+
+1. **Tailscale (RECOMMENDED):**
+   - URL: http://100.106.143.17:3000
+   - Works for anyone on Tailscale network
+   - ✅ Already working
+
+2. **localtunnel (Public access):**
+   ```bash
+   npx localtunnel --port 3000
+   ```
+   - Password: `157.131.255.168` (Mac mini public IP)
+   - URL changes each restart
+
+3. **Long-term:** Deploy to Netlify/Railway with API token (SAM researching)
+
+**Status:** Using Tailscale as official UAT for now.
