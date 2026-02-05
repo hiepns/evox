@@ -121,6 +121,50 @@ http.route({
         );
       }
 
+      // AGT-279: Handle pull_request events - dispatch to Quinn for review
+      if (event === "pull_request") {
+        const action = body.action; // opened, synchronize, reopened, closed
+        const pr = body.pull_request;
+
+        // Only dispatch reviews for opened, synchronize (new commits), and reopened
+        if (action === "opened" || action === "synchronize" || action === "reopened") {
+          const dispatchId = await ctx.runMutation(api.dispatches.createPRReviewDispatch, {
+            prNumber: pr.number,
+            prTitle: pr.title,
+            prBody: pr.body || "",
+            prUrl: pr.html_url,
+            repo: body.repository?.full_name ?? "unknown/repo",
+            branch: pr.head?.ref ?? "unknown",
+            baseBranch: pr.base?.ref ?? "main",
+            author: pr.user?.login ?? "unknown",
+            action,
+          });
+
+          return new Response(
+            JSON.stringify({
+              processed: true,
+              event: "pull_request",
+              action,
+              prNumber: pr.number,
+              dispatchedToQuinn: !!dispatchId,
+              dispatchId,
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          );
+        }
+
+        // PR closed - no action needed (could log for analytics later)
+        return new Response(
+          JSON.stringify({
+            processed: true,
+            event: "pull_request",
+            action,
+            message: `PR ${action}, no review needed`,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ message: `Ignoring event: ${event}` }),
         { status: 200, headers: { "Content-Type": "application/json" } }
