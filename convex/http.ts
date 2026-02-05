@@ -20,6 +20,7 @@ http.route({
   handler: httpAction(async (ctx) => {
     try {
       // Get all agents
+      // @ts-ignore Convex API type inference too deep (TS2589)
       const agents = await ctx.runQuery(api.agents.list);
 
       // Get pending dispatches
@@ -3475,6 +3476,126 @@ http.route({
       });
     } catch (error) {
       console.error("Get tasks with costs error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+// ============================================================
+// AGT-268: AGENT COMPLETION STATS ENDPOINTS
+// ============================================================
+
+/**
+ * GET /agentStats — Per-agent ticket completion stats
+ * Returns: completion counts for all agents (24h, 7d, all-time)
+ */
+http.route({
+  path: "/agentStats",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    try {
+      const stats = await ctx.runQuery(api.agentStats.getCompletionStats);
+      return new Response(JSON.stringify(stats), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("agentStats error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /agentStats/agent?agent=sam — Stats for a specific agent
+ * Query params: agent (required)
+ */
+http.route({
+  path: "/agentStats/agent",
+  method: "GET",
+  handler: httpAction(async (ctx, request) => {
+    try {
+      const url = new URL(request.url);
+      const agent = url.searchParams.get("agent");
+
+      if (!agent) {
+        return new Response(
+          JSON.stringify({ error: "agent query param required" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      const stats = await ctx.runQuery(api.agentStats.getAgentCompletionStats, {
+        agent,
+      });
+
+      if (!stats) {
+        return new Response(
+          JSON.stringify({ error: `Agent ${agent} not found` }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify(stats), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("agentStats/agent error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /teamSummary — Team-wide completion stats summary
+ * Quick glance view for CEO dashboard
+ */
+http.route({
+  path: "/teamSummary",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    try {
+      const summary = await ctx.runQuery(api.agentStats.getTeamSummary);
+      return new Response(JSON.stringify(summary), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("teamSummary error:", error);
+      return new Response(
+        JSON.stringify({ error: "Internal server error" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }),
+});
+
+/**
+ * GET /completionTrends — Completion stats with week-over-week trends
+ * Shows if agents are improving
+ */
+http.route({
+  path: "/completionTrends",
+  method: "GET",
+  handler: httpAction(async (ctx) => {
+    try {
+      const trends = await ctx.runQuery(api.agentStats.getCompletionTrends);
+      return new Response(JSON.stringify(trends), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (error) {
+      console.error("completionTrends error:", error);
       return new Response(
         JSON.stringify({ error: "Internal server error" }),
         { status: 500, headers: { "Content-Type": "application/json" } }

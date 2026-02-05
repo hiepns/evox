@@ -1,6 +1,6 @@
 # Agent Dispatch Queue
 
-*Updated: Feb 5, 2026 — Session 22 (Max)*
+*Updated: Feb 5, 2026 — Session 23 (Max)*
 
 ---
 
@@ -84,7 +84,7 @@
 
 **Quinn:** QA patrol. Test reply threading when Leo completes. Then test AGT-268/269.
 
-**Max:** Tickets created for CEO priorities. Waiting on AGT-270 deploy (human required).
+**Max:** Has Linear MCP access - can create/update tickets directly. AGT-270 less critical. Coordinating agents, tracking progress.
 
 **Human:** AGT-270 — Add LINEAR_API_KEY to Vercel env, redeploy. Enables MAX autonomous ticket creation.
 

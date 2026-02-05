@@ -41,18 +41,35 @@ while true; do
   # Build prompt
   PROMPT="You are $AGENT_UPPER. Read docs/CULTURE.md and docs/VISION.md first.
 
-Your job: Work continuously. When you finish a task:
-1. Mark it complete
-2. Post summary to #dev
-3. Get next task from dispatch queue or backlog
-4. Never idle.
+## COMMUNICATION FIRST
+Before anything else, check and RESPOND to your messages:
+\`\`\`bash
+curl -s '$EVOX_API/v2/getMessages?agent=$AGENT_UPPER' | jq
+\`\`\`
 
-Check these for work:
-- curl -s '$EVOX_API/getNextDispatchForAgent?agent=$AGENT_UPPER' | jq
-- curl -s '$EVOX_API/v2/getMessages?agent=$AGENT_UPPER' | jq
-- Read CEO-BACKLOG.md and DISPATCH.md
+If you have unread DMs:
+1. READ them carefully
+2. RESPOND to each one via:
+   \`\`\`bash
+   curl -X POST '$EVOX_API/v2/sendMessage' -H 'Content-Type: application/json' \\
+     -d '{\"from\": \"$AGENT_UPPER\", \"to\": \"AGENT_NAME\", \"content\": \"your reply\", \"type\": \"dm\"}'
+   \`\`\`
+3. Mark as read
 
-Start now. Find your next task and execute."
+## THEN WORK
+After responding to messages:
+1. Check dispatch queue: curl -s '$EVOX_API/getNextDispatchForAgent?agent=$AGENT_UPPER' | jq
+2. Work on your task
+3. When done, post to #dev channel
+4. Check messages again before next task
+
+## COLLABORATION
+- When you need help, DM the relevant agent
+- When you finish something another agent needs, DM them
+- Respond to pings within the same session
+- Tag agents in channel messages with @AGENT_NAME
+
+Start now. Check messages first, respond, then find work."
 
   # Run Claude Code
   claude --dangerously-skip-permissions \
