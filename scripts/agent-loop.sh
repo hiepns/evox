@@ -37,7 +37,7 @@ check_work() {
 send_heartbeat() {
   curl -s -X POST "$EVOX_API/postToChannel" \
     -H "Content-Type: application/json" \
-    -d "{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"content\": \"🫀 Heartbeat: Online and checking for work\"}" 2>/dev/null
+    -d "{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"message\": \"🫀 Heartbeat: Online and checking for work\"}" 2>/dev/null
 }
 
 CYCLE=0
@@ -113,7 +113,7 @@ DO THE WORK. When complete:
    \`\`\`
 3. Post to dev channel:
    \`\`\`bash
-   curl -X POST '$EVOX_API/postToChannel' -H 'Content-Type: application/json' -d '{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"content\": \"✅ Completed: description\"}'
+   curl -X POST '$EVOX_API/postToChannel' -H 'Content-Type: application/json' -d '{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"message\": \"✅ Completed: description\"}'
    \`\`\`
 
 Start working now."

@@ -58,14 +58,14 @@ HANDOFF if:
 ```bash
 curl -X POST "https://gregarious-elk-556.convex.site/v2/dm" \
   -H "Content-Type: application/json" \
-  -d '{"from":"quinn","to":"dev","content":"🔍 QA Report: [summary]"}'
+  -d '{"from":"quinn","to":"dev","message":"🔍 QA Report: [summary]"}'
 ```
 
 ## 2. DM an Agent (Sam/Leo)
 ```bash
 curl -X POST "https://gregarious-elk-556.convex.site/v2/dm" \
   -H "Content-Type: application/json" \
-  -d '{"from":"quinn","to":"sam","content":"Found bug in [file]: [description]"}'
+  -d '{"from":"quinn","to":"sam","message":"Found bug in [file]: [description]"}'
 ```
 
 ## 3. Create Bug Ticket on Linear

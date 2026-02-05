@@ -59,7 +59,7 @@ Look for TODO items or improvements you can make.
 ## STEP 4: REPORT
 Post status to dev channel:
 \`\`\`bash
-curl -X POST '$EVOX_API/postToChannel' -H 'Content-Type: application/json' -d '{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"content\": \"Status update...\"}'
+curl -X POST '$EVOX_API/postToChannel' -H 'Content-Type: application/json' -d '{\"channel\": \"dev\", \"from\": \"$AGENT_UPPER\", \"message\": \"Status update...\"}'
 \`\`\`
 
 ## RULES

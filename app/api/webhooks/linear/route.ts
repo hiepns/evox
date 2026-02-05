@@ -101,8 +101,22 @@ function verifyWebhookSignature(
   );
 }
 
+// Linear issue data from webhook payload
+interface LinearIssueData {
+  id: string;
+  identifier: string;
+  title?: string;
+  description?: string;
+  state?: { name: string };
+  priority?: number;
+  url?: string;
+  assignee?: { name?: string; id?: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Parse agent name from assignee or description
-function parseAgentFromIssue(data: any): string {
+function parseAgentFromIssue(data: LinearIssueData): string {
   // Try assignee name first
   const assigneeName = data.assignee?.name?.toLowerCase();
   if (assigneeName === "sam" || assigneeName === "leo" || assigneeName === "max") {
