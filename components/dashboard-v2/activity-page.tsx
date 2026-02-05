@@ -13,7 +13,10 @@ type ActivityEvent = {
   agentName?: string;
   linearIdentifier?: string;
   timestamp?: number;
-  metadata?: { toStatus?: string; assignedTo?: string };
+  title?: string;
+  description?: string;
+  category?: string;
+  metadata?: { toStatus?: string; assignedTo?: string; content?: string };
 };
 
 /** AGT-181: Activity feed with filter tabs */
@@ -101,7 +104,9 @@ export function ActivityPage() {
             const verb = eventVerbs[eventType] ?? eventType;
             const agentName = (event.agentName ?? "unknown").toUpperCase();
             const ticketId = event.linearIdentifier ?? "";
-            const metadata = event.metadata as { toStatus?: string; assignedTo?: string } | undefined;
+            const title = event.title ?? "";
+            const description = event.description ?? event.metadata?.content ?? "";
+            const metadata = event.metadata as { toStatus?: string; assignedTo?: string; content?: string } | undefined;
 
             // Build action detail
             let actionDetail = "";
@@ -116,42 +121,52 @@ export function ActivityPage() {
             return (
               <div
                 key={event._id}
-                className="flex items-center gap-2 border-b border-[#222222] px-4 py-2.5 transition-colors hover:bg-[#1a1a1a]"
+                className="flex flex-col gap-1 border-b border-[#222222] px-4 py-2.5 transition-colors hover:bg-[#1a1a1a]"
               >
-                {/* Icon */}
-                <span className="shrink-0 text-sm">{config.icon}</span>
+                {/* Main row */}
+                <div className="flex items-center gap-2">
+                  {/* Icon */}
+                  <span className="shrink-0 text-sm">{config.icon}</span>
 
-                {/* Agent name */}
-                <span className="w-10 shrink-0 truncate text-xs font-medium text-[#fafafa]">
-                  {agentName}
-                </span>
-
-                {/* Action verb */}
-                <span className={cn("shrink-0 text-xs", config.color)}>
-                  {verb}
-                </span>
-
-                {/* Ticket ID */}
-                {ticketId && (
-                  <span className="shrink-0 font-mono text-xs text-[#fafafa]">
-                    {ticketId}
+                  {/* Agent name */}
+                  <span className="w-10 shrink-0 truncate text-xs font-medium text-[#fafafa]">
+                    {agentName}
                   </span>
-                )}
 
-                {/* Action detail */}
-                {actionDetail && (
-                  <span className="shrink-0 text-xs text-[#888888]">
-                    {actionDetail}
+                  {/* Action verb */}
+                  <span className={cn("shrink-0 text-xs", config.color)}>
+                    {verb}
                   </span>
+
+                  {/* Ticket ID */}
+                  {ticketId && (
+                    <span className="shrink-0 font-mono text-xs text-[#fafafa]">
+                      {ticketId}
+                    </span>
+                  )}
+
+                  {/* Action detail */}
+                  {actionDetail && (
+                    <span className="shrink-0 text-xs text-[#888888]">
+                      {actionDetail}
+                    </span>
+                  )}
+
+                  {/* Spacer */}
+                  <span className="flex-1" />
+
+                  {/* Timestamp */}
+                  <span className="shrink-0 text-[10px] text-[#555555]">
+                    {formatDistanceToNow(event.timestamp ?? new Date().getTime(), { addSuffix: false })}
+                  </span>
+                </div>
+                
+                {/* Title/Description row - if available */}
+                {(title || description) && (
+                  <div className="ml-6 text-xs text-[#888888] truncate max-w-[90%]">
+                    {title || description}
+                  </div>
                 )}
-
-                {/* Spacer */}
-                <span className="flex-1" />
-
-                {/* Timestamp */}
-                <span className="shrink-0 text-[10px] text-[#555555]">
-                  {formatDistanceToNow(event.timestamp ?? new Date().getTime(), { addSuffix: false })}
-                </span>
               </div>
             );
           })
