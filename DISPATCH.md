@@ -1,35 +1,40 @@
 # Agent Dispatch Queue
 
-*Updated: Feb 5, 2026 — Session 24 (Max)*
+*Updated: Feb 5, 2026 — Drew (PM)*
 
 ---
 
-## 🔴 P0 — CEO PRIORITIES
-
-### Sam (Backend)
-| Ticket | Task | Status |
-|--------|------|--------|
-| AGT-268 | Per-Agent Ticket Completion Stats | 📤 In Progress |
-
-### Leo (Frontend)
-| Ticket | Task | Status |
-|--------|------|--------|
-| DISPATCH | Comment reply threading | 📤 In Progress |
-| AGT-269 | CEO Dashboard — Single Glanceable View | 📋 Next (after threading) |
-
----
-
-## 🟠 P1 — Backlog
+## 🔴 P0 — Ready for Dispatch
 
 ### Sam (Backend)
 | Ticket | Task | Priority |
 |--------|------|----------|
-| NEW | Dispatch reorder — Backend mutation for drag-drop ordering | P2 |
+| AGT-276 | Auto-Retry Failed Tasks with Smart Recovery | High |
+| AGT-278 | Auto-Detect Blockers & Escalate | High |
+| AGT-289 | Implement reorderDispatch mutation for drag-drop | Low |
 
 ### Leo (Frontend)
 | Ticket | Task | Priority |
 |--------|------|----------|
-| NEW | TypeScript cleanup — Fix implicit any in next.config.ts | P3 |
+| AGT-287 | Replace hardcoded hex colors with Tailwind tokens | Low |
+| AGT-93 | ExecutionPanel UI component | ✅ Done |
+
+### Quinn (QA)
+| Task | Status |
+|------|--------|
+| QA patrol — test recent commits | ONGOING |
+| Test AGT-281 System Health Widget | TODO |
+
+---
+
+## 🟠 P1 — Backlog (Phase 2-3)
+
+| Ticket | Task | Owner | Priority |
+|--------|------|-------|----------|
+| AGT-280 | Self-Improvement Loop — Learn from Mistakes | Sam | Medium |
+| AGT-282 | User Feedback Analysis | Sam | Medium |
+| AGT-283 | Feature Proposal System | Max | Medium |
+| AGT-291 | Tech Debt: Consolidate messaging tables | Sam | Low |
 
 ---
 
@@ -37,54 +42,44 @@
 
 | Ticket | Task | Notes |
 |--------|------|-------|
-| AGT-244 | Delete the Middleman — Agents Self-Organize | Bold experiment |
-| AGT-270 | Deploy create-ticket API | P3 — MAX has MCP access, less critical |
+| AGT-284 | Priority Voting — Agents vote on features | Phase 3 |
+| AGT-288 | Minimal-Oversight Shipping | Phase 3 |
 
 ---
 
-## Quinn (QA)
+## Agent Status
 
-| Task | Status |
-|------|--------|
-| QA patrol — test recent commits | ✅ Complete (CORE-199) |
-| Fix simple bugs (< 5 lines) | ONGOING |
-| Test Elon Dashboard | ✅ Complete |
-| Test reply threading when Leo completes | TODO |
+| Agent | Dispatch | Status |
+|-------|----------|--------|
+| SAM | None | Available |
+| LEO | None | Available |
+| QUINN | None | Available |
+| MAX | AGT-108 (stale) | ⚠️ Needs dispatch clear |
 
 ---
 
-## Completed Today (Session 16-24)
+## Completed Recently
 
-- ✅ AGT-274: Terminal UI for Agents — P0 CEO visibility (Sam)
-- ✅ AGT-255: Auto-Wake System — Linear status closed (Max)
-- ✅ Task cost tracking — Queries + HTTP endpoints (Sam)
-- ✅ AGT-80: Git activity feed (Sam)
-- ✅ Reply threading backend — Schema + API (Sam/Max)
-- ✅ AGT-265: Auto-spawn sub-agents for large tasks (Sam)
-- ✅ AGT-264: Real-time agent activity feed (Sam)
-- ✅ AGT-263: Agent retry with exponential backoff (Sam)
-- ✅ AGT-246: [EPIC] 10x Agent Autonomy — All child tasks complete (Max)
-- ✅ CORE-199: QA Report — Backend Systems Health Check (Quinn)
-- ✅ AGT-254: CEO Dashboard — North Star Metrics View (Leo)
-- ✅ AGT-237: Real-time Agent Communication Log (Leo)
-- ✅ AGT-201: Comment Thread v2 — Enhanced UI (Leo)
-- ✅ AGT-256: Agent Ping System — Request work when idle (Sam)
-- ✅ AGT-255: Auto-Wake System — Webhook triggers agent start (Sam)
-- ✅ AGT-252: Auto-Recruit Agents — Self-Spawning Team (Sam)
+- ✅ AGT-281: System Health Widget (Leo)
+- ✅ AGT-290: POST method support for dispatch APIs (Sam)
+- ✅ AGT-271: @mention notification alerts (Sam)
+- ✅ AGT-277: Git rollback mechanism (Sam)
+- ✅ AGT-268: Per-Agent Ticket Completion Stats (Sam)
+- ✅ AGT-269: CEO Dashboard — Single Glanceable View (Leo)
+- ✅ AGT-274: Terminal UI for Agents (Sam)
+- ✅ AGT-93: ExecutionPanel UI component (Leo)
 
 ---
 
 ## Instructions
 
-**Sam:** AGT-268 — Per-agent ticket completion stats. Backend query for tickets done per agent. Add to CEO dashboard data.
+**Sam:** Pick up AGT-276 (Auto-Retry) or AGT-278 (Auto-Detect Blockers) — both High priority Phase 2 items.
 
-**Leo:** Finish reply threading, then AGT-269 — Merge CEO+Elon dashboards into single glanceable view.
+**Leo:** Available for new work. AGT-287 (Tailwind cleanup) is low priority housekeeping.
 
-**Quinn:** QA patrol. Test reply threading when Leo completes. Then test AGT-268/269.
+**Quinn:** Test AGT-281 System Health Widget. Continue QA patrol.
 
-**Max:** Has Linear MCP access - can create/update tickets directly. AGT-270 less critical. Coordinating agents, tracking progress.
-
-**Human:** AGT-270 now P3 — MAX has MCP access for tickets. No immediate blocker.
+**Max:** Has stale dispatch for AGT-108 (Canceled). Needs manual clear. Then coordinate Phase 2 work.
 
 ---
 
