@@ -43,12 +43,33 @@ curl -s "https://gregarious-elk-556.convex.site/api/performance/dashboard" | jq
 
 ## 💬 Messaging
 
+### 🚨 Contact CEO Directly
+**Agents are encouraged to contact CEO for difficult problems!**
+
+Send a DM to CEO (will be relayed to Telegram):
+```bash
+curl -X POST "https://gregarious-elk-556.convex.site/v2/sendMessage" \
+  -H "Content-Type: application/json" \
+  -d '{"from": "SAM", "to": "CEO", "message": "Blocked on X, need decision", "type": "dm", "priority": "high"}'
+```
+
+**When to contact CEO:**
+- Blocked for >30 minutes on a decision
+- Need access/credentials
+- Architecture decisions
+- Unclear requirements
+- Inter-agent conflicts
+
+**Priority levels:** `normal`, `high`, `urgent`
+
+---
+
 ### POST /v2/sendMessage
 Send a message (DM or channel).
 ```bash
 curl -X POST "https://gregarious-elk-556.convex.site/v2/sendMessage" \
   -H "Content-Type: application/json" \
-  -d '{"from": "SAM", "to": "MAX", "content": "Task complete!", "type": "dm"}'
+  -d '{"from": "SAM", "to": "MAX", "message": "Task complete!", "type": "dm"}'
 ```
 
 ### GET /v2/getMessages

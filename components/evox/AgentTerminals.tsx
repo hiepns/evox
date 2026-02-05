@@ -10,25 +10,33 @@ interface Agent {
   color: string;
 }
 
-const AGENTS: Agent[] = [
-  { id: 'max', name: 'MAX', role: 'PM', port: 7681, color: '#3B82F6' },
-  { id: 'sam', name: 'SAM', role: 'Backend', port: 7682, color: '#10B981' },
-  { id: 'leo', name: 'LEO', role: 'Frontend', port: 7683, color: '#F59E0B' },
-  { id: 'quinn', name: 'QUINN', role: 'QA', port: 7684, color: '#8B5CF6' },
+interface AgentConfig extends Agent {
+  tunnelUrl?: string;
+}
+
+const AGENTS: AgentConfig[] = [
+  { id: 'max', name: 'MAX', role: 'PM', port: 7681, color: '#3B82F6', tunnelUrl: 'https://evox-max.loca.lt' },
+  { id: 'sam', name: 'SAM', role: 'Backend', port: 7682, color: '#10B981', tunnelUrl: 'https://evox-sam.loca.lt' },
+  { id: 'leo', name: 'LEO', role: 'Frontend', port: 7683, color: '#F59E0B', tunnelUrl: 'https://evox-leo.loca.lt' },
+  { id: 'quinn', name: 'QUINN', role: 'QA', port: 7684, color: '#8B5CF6', tunnelUrl: 'https://evox-quinn.loca.lt' },
 ];
 
 // Base URL for ttyd - will be configured per environment
-const getTtydUrl = (port: number) => {
+const getTtydUrl = (agent: AgentConfig) => {
   // For local development
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return `http://localhost:${port}`;
+    return `http://localhost:${agent.port}`;
+  }
+  // For tunnel access (loca.lt)
+  if (agent.tunnelUrl) {
+    return agent.tunnelUrl;
   }
   // For remote access via Tailscale (Mac mini)
-  return `http://100.106.143.17:${port}`;
+  return `http://100.106.143.17:${agent.port}`;
 };
 
 export function AgentTerminals() {
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<AgentConfig | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -83,10 +91,9 @@ export function AgentTerminals() {
           }`}
         >
           <iframe
-            src={getTtydUrl(selectedAgent.port)}
+            src={getTtydUrl(selectedAgent)}
             className="w-full h-full border-0 bg-black"
             title={`${selectedAgent.name} Terminal`}
-            sandbox="allow-scripts allow-same-origin"
           />
         </div>
       )}
@@ -103,7 +110,7 @@ export function AgentTerminals() {
         <span>💡 Terminals are read-only for safety</span>
         <div className="flex gap-2">
           <a
-            href={selectedAgent ? getTtydUrl(selectedAgent.port) : '#'}
+            href={selectedAgent ? getTtydUrl(selectedAgent) : '#'}
             target="_blank"
             rel="noopener noreferrer"
             className={`hover:text-white transition ${!selectedAgent ? 'opacity-50' : ''}`}
