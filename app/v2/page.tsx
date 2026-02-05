@@ -1,18 +1,21 @@
 "use client";
 
 /**
- * EVOX Dashboard v0.2 - Lean & Clean
- * Uses HTTP endpoint directly for simplicity
+ * EVOX Dashboard v0.2 - Lean & Mobile-first
+ * Includes AgentCommsWidget for agent-to-agent communication
  */
 
 import { useEffect, useState } from "react";
+import { AgentCommsWidget } from "@/components/dashboard-v2";
 
 interface Agent {
   name: string;
-  computedStatus: string;
+  computedStatus?: string;
+  status?: string;
 }
 
 interface Activity {
+  _id: string;
   agentName?: string;
   eventType?: string;
   description?: string;
@@ -20,133 +23,134 @@ interface Activity {
   timestamp: number;
 }
 
-interface Status {
+interface StatusData {
   agents: Agent[];
   recentActivity: Activity[];
 }
 
 export default function V2Dashboard() {
-  const [status, setStatus] = useState<Status | null>(null);
+  const [data, setData] = useState<StatusData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchStatus = async () => {
+    const fetchData = async () => {
       try {
         const res = await fetch("https://gregarious-elk-556.convex.site/status");
-        const data = await res.json();
-        setStatus(data);
-        setError(null);
+        const json = await res.json();
+        setData(json);
       } catch (err) {
-        setError("Failed to load status");
+        console.error("Failed to fetch status:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000); // Refresh every 5s
+    fetchData();
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
+  if (loading || !data) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="animate-pulse text-xl">Loading EVOX...</div>
+        <div className="animate-pulse text-zinc-500">Loading EVOX...</div>
       </div>
     );
   }
 
-  if (error || !status) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-red-500">{error || "No data"}</div>
-      </div>
-    );
-  }
+  const agents = data.agents || [];
+  const activities = data.recentActivity || [];
+  const onlineCount = agents.filter(
+    (a) => a.computedStatus === "online" || a.computedStatus === "busy" || a.status === "busy"
+  ).length;
 
-  const agents = status.agents || [];
-  const activities = status.recentActivity || [];
-  const onlineCount = agents.filter((a) => a.computedStatus === "online" || a.computedStatus === "busy").length;
-  const totalCount = agents.length;
+  // Filter channel messages for AgentCommsWidget
+  const channelMessages = activities.filter((a) => a.eventType === "channel_message");
 
   return (
     <div className="min-h-screen bg-black text-white p-4 max-w-lg mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">EVOX</h1>
-        <span className="text-zinc-500 text-sm">v0.2</span>
+      <header className="flex items-center justify-between mb-6 pb-4 border-b border-zinc-800">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">EVOX</h1>
+          <span className="text-zinc-600 text-xs">v0.2</span>
+        </div>
+        <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-full">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-zinc-400 text-xs">Live</span>
+        </div>
       </header>
 
-      {/* Agent Status */}
+      {/* Agent Status Grid */}
       <section className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          {agents.slice(0, 6).map((agent, i) => (
-            <div
-              key={i}
-              className={`w-5 h-5 rounded-full ${
-                agent.computedStatus === "online" ? "bg-green-500" :
-                agent.computedStatus === "busy" ? "bg-yellow-500" :
-                "bg-red-500"
-              }`}
-              title={agent.name}
-            />
-          ))}
-          <span className="text-zinc-400 text-sm ml-2">
-            {onlineCount}/{totalCount} online
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-zinc-400">Team Status</h2>
+          <span className="text-xs text-zinc-500 bg-zinc-900 px-2 py-1 rounded">
+            {onlineCount}/{agents.length} online
           </span>
         </div>
-        <div className="flex gap-2 text-xs text-zinc-500">
-          {agents.slice(0, 6).map((agent, i) => (
-            <span key={i} className="w-5 text-center">{agent.name?.slice(0, 3)}</span>
-          ))}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          {agents.slice(0, 6).map((agent, i) => {
+            const isOnline = agent.computedStatus === "online" || agent.computedStatus === "busy" || agent.status === "busy";
+            return (
+              <div
+                key={i}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-zinc-900/50 active:bg-zinc-800 min-h-[52px]"
+              >
+                <div
+                  className={`w-4 h-4 rounded-full ${
+                    isOnline
+                      ? "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                      : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                  }`}
+                />
+                <span className="text-[11px] font-medium text-zinc-300 truncate w-full text-center">
+                  {agent.name || "?"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </section>
 
       {/* Metrics */}
-      <section className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-zinc-900 rounded-xl p-4 text-center">
+      <section className="grid grid-cols-2 gap-3 mb-6">
+        <div className="bg-zinc-900/80 rounded-xl p-4 border border-zinc-800">
           <div className="text-3xl font-bold text-green-400">{onlineCount}</div>
-          <div className="text-zinc-500 text-sm">Online</div>
+          <div className="text-zinc-500 text-xs uppercase tracking-wide mt-1">Online</div>
         </div>
-        <div className="bg-zinc-900 rounded-xl p-4 text-center">
+        <div className="bg-zinc-900/80 rounded-xl p-4 border border-zinc-800">
           <div className="text-3xl font-bold text-blue-400">{activities.length}</div>
-          <div className="text-zinc-500 text-sm">Activities</div>
+          <div className="text-zinc-500 text-xs uppercase tracking-wide mt-1">Activities</div>
         </div>
       </section>
 
-      {/* Alerts */}
-      {onlineCount < totalCount && (
-        <section className="mb-6">
-          <div className="bg-red-900/30 border border-red-500/50 rounded-xl p-4">
-            <div className="text-red-400 font-semibold">
-              ⚠️ {totalCount - onlineCount} agent(s) offline
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Agent Communications Widget */}
+      <section className="mb-6">
+        <AgentCommsWidget messages={channelMessages} limit={6} />
+      </section>
 
-      {/* Live Activity */}
+      {/* Live Activity Feed */}
       <section>
-        <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-          Live Activity
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-zinc-400">Live Activity</h2>
+          <span className="text-[10px] text-zinc-600">{activities.length} events</span>
+        </div>
         <div className="space-y-2">
-          {activities.slice(0, 8).map((activity, i) => (
+          {activities.slice(0, 6).map((activity, i) => (
             <div
-              key={i}
-              className="bg-zinc-900 rounded-xl p-3"
+              key={activity._id || i}
+              className="bg-zinc-900/50 active:bg-zinc-800 rounded-lg p-4 min-h-[56px]"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="font-medium text-sm text-blue-400">
+                <span className="font-semibold text-sm text-blue-400">
                   {activity.agentName || "System"}
                 </span>
-                <span className="text-zinc-500 text-xs">
+                <span className="text-zinc-600 text-xs">
                   {formatTime(activity.timestamp)}
                 </span>
               </div>
-              <div className="text-zinc-300 text-sm line-clamp-2">
+              <div className="text-zinc-400 text-sm line-clamp-2">
                 {activity.description || activity.title || "Activity"}
               </div>
             </div>
@@ -155,8 +159,10 @@ export default function V2Dashboard() {
       </section>
 
       {/* Footer */}
-      <footer className="mt-8 pt-4 border-t border-zinc-800 text-center text-zinc-600 text-xs">
-        EVOX v0.2 • Auto-refresh 5s
+      <footer className="mt-8 pt-4 pb-6 border-t border-zinc-800/50 text-center">
+        <span className="text-zinc-700 text-xs tracking-wider uppercase">
+          EVOX v0.2 • Auto-refresh 5s
+        </span>
       </footer>
     </div>
   );

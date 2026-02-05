@@ -14,3 +14,6 @@ export { DispatchList } from "./DispatchList";
 // CEO Dashboard widgets (AGT-311, AGT-312)
 export { SystemHealthWidget } from "./SystemHealthWidget";
 export { VelocityWidget } from "./VelocityWidget";
+
+// Agent communication widget
+export { AgentCommsWidget } from "./AgentCommsWidget";
