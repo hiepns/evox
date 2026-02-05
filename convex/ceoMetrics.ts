@@ -156,105 +156,166 @@ export const getWins = query({
 });
 
 /**
- * Get unified live feed (activity + communications merged)
- * Filtered to only meaningful events
+ * Get unified live feed - IMPACT ONLY, NO NOISE
+ * Shows: commits, task completions, file changes, meaningful actions
+ * Hides: heartbeats, "posted to #dev", generic messages
  */
 export const getLiveFeed = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 10;
 
-    // Get recent activity events
-    const activities = await ctx.db
-      .query("activityEvents")
-      .order("desc")
-      .take(limit * 2);
-
-    // Get recent messages
-    const messages = await ctx.db
-      .query("unifiedMessages")
-      .order("desc")
-      .take(limit * 2);
-
     // Get agents for enrichment
     const agents = await ctx.db.query("agents").collect();
     const agentMap = new Map(agents.map((a) => [a.name.toLowerCase(), a]));
 
-    // Merge and sort by timestamp
     type FeedItem = {
       id: string;
-      type: "activity" | "message";
+      type: "commit" | "task" | "activity";
       agent: string;
       avatar: string;
       action: string;
       detail: string;
+      meta?: string; // files changed, lines added, etc.
       timestamp: number;
+      impact: "high" | "medium" | "low";
     };
 
     const feedItems: FeedItem[] = [];
 
-    // Process activities - filter out noise
+    // 1. GIT COMMITS - High impact, shows real work
+    const commits = await ctx.db
+      .query("gitActivity")
+      .order("desc")
+      .take(limit);
+
+    for (const commit of commits) {
+      const agent = agentMap.get(commit.agentName?.toLowerCase() || "");
+      const avatar = agent?.avatar || "?";
+      const message = commit.message?.split("\n")[0]?.slice(0, 50) || "";
+
+      // Build meta info
+      const metaParts: string[] = [];
+      if (commit.filesChanged) metaParts.push(`${commit.filesChanged} files`);
+      if (commit.additions) metaParts.push(`+${commit.additions}`);
+      if (commit.deletions) metaParts.push(`-${commit.deletions}`);
+
+      feedItems.push({
+        id: commit._id,
+        type: "commit",
+        agent: commit.agentName?.toUpperCase() || "?",
+        avatar,
+        action: "shipped",
+        detail: message,
+        meta: metaParts.length > 0 ? metaParts.join(" ") : commit.shortHash,
+        timestamp: commit.pushedAt || commit._creationTime,
+        impact: "high",
+      });
+    }
+
+    // 2. TASK COMPLETIONS - High impact
+    const activities = await ctx.db
+      .query("activityEvents")
+      .order("desc")
+      .take(limit * 3);
+
+    // NOISE FILTER - skip these event types entirely
+    const NOISE_EVENTS = [
+      "channel_message",
+      "heartbeat",
+      "message",
+      "posted",
+      "dm",
+    ];
+
+    // NOISE PATTERNS in descriptions
+    const NOISE_PATTERNS = [
+      /posted to #/i,
+      /heartbeat/i,
+      /status.?ok/i,
+      /online/i,
+      /standing by/i,
+      /session (start|complete)/i,
+    ];
+
     for (const act of activities) {
       const eventType = act.eventType?.toLowerCase() || "";
-      // Skip noisy events
-      if (["channel_message", "heartbeat"].includes(eventType)) continue;
+      const description = act.description || "";
+
+      // Skip noise event types
+      if (NOISE_EVENTS.some(n => eventType.includes(n))) continue;
+
+      // Skip noise patterns in description
+      if (NOISE_PATTERNS.some(p => p.test(description))) continue;
 
       const agent = agentMap.get(act.agentName?.toLowerCase() || "");
       const avatar = agent?.avatar || "?";
 
       let action = "";
       let detail = "";
+      let impact: "high" | "medium" | "low" = "medium";
 
-      if (eventType === "created") {
+      if (eventType === "completed" || eventType === "task_completed") {
+        action = "completed";
+        detail = act.linearIdentifier
+          ? `${act.linearIdentifier}: ${act.title || description.slice(0, 40)}`
+          : description.slice(0, 50);
+        impact = "high";
+      } else if (eventType === "created" || eventType === "task_created") {
         action = "created";
-        detail = act.linearIdentifier || act.description?.slice(0, 40) || "";
-      } else if (eventType === "completed" || eventType === "status_change") {
-        action = eventType === "completed" ? "completed" : "moved";
-        detail = act.linearIdentifier || act.description?.slice(0, 40) || "";
-      } else if (eventType === "push" || eventType === "pr_merged") {
-        action = eventType === "push" ? "pushed" : "merged";
-        detail = act.description?.slice(0, 40) || "";
+        detail = act.linearIdentifier || description.slice(0, 40);
+        impact = "medium";
+      } else if (eventType === "push" || eventType === "deploy_success") {
+        action = eventType === "push" ? "pushed" : "deployed";
+        detail = description.slice(0, 40);
+        impact = "high";
+      } else if (eventType === "pr_merged") {
+        action = "merged PR";
+        detail = description.slice(0, 40);
+        impact = "high";
+      } else if (eventType === "status_change" || eventType === "moved") {
+        // Only show moves to In Progress or Done
+        const toStatus = act.metadata?.toStatus?.toLowerCase() || "";
+        if (!["in_progress", "done", "review"].includes(toStatus)) continue;
+        action = toStatus === "done" ? "finished" : "started";
+        detail = act.linearIdentifier || description.slice(0, 40);
+        impact = toStatus === "done" ? "high" : "medium";
       } else {
         continue; // Skip other events
       }
 
       feedItems.push({
         id: act._id,
-        type: "activity",
+        type: "task",
         agent: act.agentName?.toUpperCase() || "?",
         avatar,
         action,
         detail,
         timestamp: act.timestamp || act._creationTime,
+        impact,
       });
     }
 
-    // Process messages - only DMs with content
-    for (const msg of messages) {
-      if (!msg.content || msg.type === "channel") continue;
+    // Sort by timestamp descending, then by impact
+    feedItems.sort((a, b) => {
+      const timeDiff = b.timestamp - a.timestamp;
+      if (Math.abs(timeDiff) < 60000) { // Within 1 minute, sort by impact
+        const impactOrder = { high: 0, medium: 1, low: 2 };
+        return impactOrder[a.impact] - impactOrder[b.impact];
+      }
+      return timeDiff;
+    });
 
-      const fromAgent = agentMap.get(msg.fromAgent?.toLowerCase() || "");
-      const avatar = fromAgent?.avatar || "?";
+    // Dedupe by agent+action+detail (keep most recent)
+    const seen = new Set<string>();
+    const deduped = feedItems.filter((item) => {
+      const key = `${item.agent}-${item.action}-${item.detail.slice(0, 20)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
-      // Extract summary from message
-      let detail = msg.content.slice(0, 50);
-      if (msg.content.length > 50) detail += "...";
-
-      feedItems.push({
-        id: msg._id,
-        type: "message",
-        agent: msg.fromAgent?.toUpperCase() || "?",
-        avatar,
-        action: "says",
-        detail,
-        timestamp: msg.createdAt || msg._creationTime,
-      });
-    }
-
-    // Sort by timestamp descending
-    feedItems.sort((a, b) => b.timestamp - a.timestamp);
-
-    return feedItems.slice(0, limit);
+    return deduped.slice(0, limit);
   },
 });
 

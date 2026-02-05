@@ -50,10 +50,21 @@ const eventVerbs: Record<string, string> = {
   sync_completed: "synced",
 };
 
+// NOISE PATTERNS - filter these out
+const NOISE_EVENT_TYPES = ["channel_message", "heartbeat", "message", "posted", "dm"];
+const NOISE_PATTERNS = [
+  /posted to #/i,
+  /heartbeat/i,
+  /status.?ok/i,
+  /standing by/i,
+  /session (start|complete)/i,
+];
+
 /**
  * Phase 5: Real-time Activity Feed (Linear-style)
  * Subscribes to Convex activityEvents with real-time updates
  * No polling - Convex pushes updates instantly via WebSocket
+ * Filters out noise - only shows IMPACT
  */
 export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
   // Track seen event IDs to detect new arrivals
@@ -62,7 +73,18 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
   const mountTimeRef = useRef<number>(Date.now());
 
   // Real-time subscription to activity events - Convex handles WebSocket
-  const events = useQuery(api.activityEvents.list, { limit });
+  const rawEvents = useQuery(api.activityEvents.list, { limit: limit * 2 });
+
+  // Filter out noise
+  const events = (rawEvents as ActivityEvent[] | undefined)?.filter((event) => {
+    const eventType = (event.eventType ?? "").toLowerCase();
+    // Skip noise event types
+    if (NOISE_EVENT_TYPES.some(n => eventType.includes(n))) return false;
+    // Skip noise patterns in description (using metadata or eventType as proxy)
+    const desc = eventType + (event.metadata?.toStatus || "");
+    if (NOISE_PATTERNS.some(p => p.test(desc))) return false;
+    return true;
+  }).slice(0, limit);
 
   // Detect new events arriving in real-time
   useEffect(() => {
