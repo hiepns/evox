@@ -79,12 +79,29 @@ function Alert({ text, type }: { text: string; type: "critical" | "warning" | "i
   );
 }
 
-// Activity item
-function ActivityItem({ agent, action, time }: { agent: string; action: string; time: number }) {
+// Activity item with type indicator
+function ActivityItem({ agent, action, time, type }: { agent: string; action: string; time: number; type?: string }) {
+  const typeColors: Record<string, string> = {
+    heartbeat: "text-emerald-500",
+    channel_message: "text-blue-400",
+    task_completed: "text-green-400",
+    commit: "text-purple-400",
+    default: "text-zinc-400",
+  };
+  
+  const typeIcons: Record<string, string> = {
+    heartbeat: "💓",
+    channel_message: "💬",
+    task_completed: "✅",
+    commit: "🔀",
+    default: "•",
+  };
+
   return (
     <div className="flex items-start gap-2 py-2 border-b border-zinc-800 last:border-0">
-      <span className="text-xs font-bold text-blue-400 uppercase w-12 shrink-0">{agent}</span>
-      <span className="text-sm text-zinc-300 flex-1">{action}</span>
+      <span className="text-xs shrink-0">{typeIcons[type || "default"] || "•"}</span>
+      <span className={cn("text-xs font-bold uppercase w-10 shrink-0", typeColors[type || "default"])}>{agent?.slice(0, 4)}</span>
+      <span className="text-sm text-zinc-300 flex-1 break-words">{action}</span>
       <span className="text-xs text-zinc-600 shrink-0">
         {formatDistanceToNow(time, { addSuffix: false })}
       </span>
@@ -101,8 +118,7 @@ export function SimpleCEODashboard() {
   const agents = useQuery(api.agents.list) as AgentDoc[] | undefined;
   const tasks = useQuery(api.tasks.list, { limit: 100 }) as TaskDoc[] | undefined;
   const stats = useQuery(api.dashboard.getStats, { startTs: todayStart, endTs: todayEnd });
-  const activity = useQuery(api.activityEvents.list, { limit: 10 }) as ActivityEvent[] | undefined;
-  const messages = useQuery(api.messages.getChannelMessages, { channel: "dev", limit: 10 }) as Message[] | undefined;
+  const activity = useQuery(api.activityEvents.list, { limit: 20 }) as ActivityEvent[] | undefined; // More activity
 
   // Calculate metrics
   const metrics = useMemo(() => {
@@ -153,35 +169,21 @@ export function SimpleCEODashboard() {
     return items;
   }, [agents, now]);
 
-  // Merge activity and messages into unified feed
+  // Activity feed - show all agent activity
   const feed = useMemo(() => {
-    const items: Array<{ agent: string; action: string; time: number }> = [];
-
-    // Add activity events
-    if (activity) {
-      activity.forEach(e => {
-        items.push({
-          agent: e.agentName,
-          action: e.description,
-          time: e.timestamp,
-        });
-      });
-    }
-
-    // Add channel messages
-    if (messages) {
-      messages.forEach(m => {
-        items.push({
-          agent: m.from,
-          action: m.message.slice(0, 100) + (m.message.length > 100 ? "..." : ""),
-          time: m.createdAt,
-        });
-      });
-    }
-
-    // Sort by time, newest first
-    return items.sort((a, b) => b.time - a.time).slice(0, 15);
-  }, [activity, messages]);
+    if (!activity) return [];
+    
+    return activity
+      .filter(e => e.description && e.description.length > 0)
+      .map(e => ({
+        agent: e.agentName?.toUpperCase() || "SYSTEM",
+        action: e.description.slice(0, 150) + (e.description.length > 150 ? "..." : ""),
+        time: e.timestamp,
+        type: e.eventType || "activity",
+      }))
+      .sort((a, b) => b.time - a.time)
+      .slice(0, 20);
+  }, [activity]);
 
   // Loading state
   if (!agents) {
@@ -243,7 +245,13 @@ export function SimpleCEODashboard() {
         <div className="space-y-0 max-h-[50vh] overflow-y-auto">
           {feed.length > 0 ? (
             feed.map((item, i) => (
-              <ActivityItem key={i} agent={item.agent} action={item.action} time={item.time} />
+              <ActivityItem 
+                key={i} 
+                agent={item.agent} 
+                action={item.action} 
+                time={item.time}
+                type={(item as any).type}
+              />
             ))
           ) : (
             <div className="text-zinc-600 text-center py-8">No recent activity</div>
