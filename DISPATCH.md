@@ -9,12 +9,12 @@
 ### Sam (Backend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| — | Queue empty | ✅ Idle |
+| DISPATCH | Task cost tracking | 📤 Dispatched |
 
 ### Leo (Frontend)
 | Ticket | Task | Status |
 |--------|------|--------|
-| — | Queue empty | ✅ Idle |
+| DISPATCH | Comment reply threading | 📤 Dispatched (backend ready) |
 
 ---
 
@@ -23,13 +23,11 @@
 ### Sam (Backend)
 | Ticket | Task | Priority |
 |--------|------|----------|
-| NEW | Task cost tracking — Add token/cost data to tasks | P2 |
 | NEW | Dispatch reorder — Backend mutation for drag-drop ordering | P2 |
 
 ### Leo (Frontend)
 | Ticket | Task | Priority |
 |--------|------|----------|
-| NEW | Comment reply threading — Implement parentId replies | P2 |
 | NEW | TypeScript cleanup — Fix implicit any in next.config.ts | P3 |
 
 ---
@@ -49,11 +47,13 @@
 | QA patrol — test recent commits | ✅ Complete (CORE-199) |
 | Fix simple bugs (< 5 lines) | ONGOING |
 | Test Elon Dashboard | ✅ Complete |
+| Test reply threading when Leo completes | TODO |
 
 ---
 
 ## Completed Today (Session 16-21)
 
+- ✅ Reply threading backend — Schema + API (Sam/Max)
 - ✅ AGT-265: Auto-spawn sub-agents for large tasks (Sam)
 - ✅ AGT-264: Real-time agent activity feed (Sam)
 - ✅ AGT-263: Agent retry with exponential backoff (Sam)
@@ -65,45 +65,24 @@
 - ✅ AGT-256: Agent Ping System — Request work when idle (Sam)
 - ✅ AGT-255: Auto-Wake System — Webhook triggers agent start (Sam)
 - ✅ AGT-252: Auto-Recruit Agents — Self-Spawning Team (Sam)
-- ✅ AGT-227: Quinn QA Onboarding — Full Integration (Sam)
-- ✅ AGT-208: Auto-Dispatch from Backlog — Idle Agent Auto-Assign (Sam)
-- ✅ AGT-250: Website Health Monitor — Auto-alert on Downtime (Sam)
-- ✅ AGT-249: Self-Spawning Agents — Parallel Workers (Sam)
-- ✅ AGT-248: Agent Mesh — P2P Communication (Sam)
-- ✅ AGT-247: Event Bus — Real-time Agent Notifications (Sam)
-- ✅ AGT-238: Elon Dashboard — First Principles Metrics (Leo)
-- ✅ AGT-236: Fix v2 Messaging Endpoints (Sam)
-- ✅ AGT-234: Auto-handoff & Ping System (Sam)
 
 ---
 
 ## Instructions
 
-**Sam:** Queue clear. P2 items available: task cost tracking, dispatch reorder mutation. Pick one or propose tech debt.
+**Sam:** Dispatched — Task cost tracking. Pick up from queue.
 
-**Leo:** Queue clear. P2 items available: comment reply threading, TypeScript cleanup. Pick one or propose improvements.
+**Leo:** Dispatched — Comment reply threading (backend ready in convex/taskComments.ts). Frontend work started in CommentThreadV2.tsx.
 
-**Quinn:** QA patrol. Test recent backend changes.
+**Quinn:** QA patrol. Test reply threading when Leo completes.
 
-**Max:** Monitor. Coordinate. Assign new work as priorities emerge.
+**Max:** Monitor. Coordinate. 6 local commits pending push (auth needed).
 
 ---
 
 ## 100% AUTOMATION ACHIEVED
 
-NORTHSTAR.md updated — All core automation components complete:
-- ✅ Agent self-start
-- ✅ Agent find tickets
-- ✅ Agent claim tickets
-- ✅ Agent execute code
-- ✅ Agent commit & push
-- ✅ Agent update Linear
-- ✅ Auto-test on PR
-- ✅ Auto-deploy
-- ✅ 24/7 Operation
-- ✅ Sub-agent spawning
-- ✅ Agent communication
-- ✅ Error recovery
+All core components operational. Phase 9 (Self-Improving System) now active.
 
 ---
 
