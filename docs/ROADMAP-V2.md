@@ -28,13 +28,13 @@
 
 | # | Task | Owner | Status | Ticket |
 |---|------|-------|--------|--------|
-| 1.1 | Dashboard v0.2 - MetricsBar | LEO | ⬜ | AGT-314 |
-| 1.2 | Dashboard v0.2 - AgentGrid | LEO | ⬜ | AGT-314 |
-| 1.3 | Dashboard v0.2 - AlertsBanner | LEO | ⬜ | AGT-314 |
-| 1.4 | Dashboard v0.2 - ActivityFeed | LEO | ⬜ | AGT-314 |
-| 1.5 | Dashboard v0.2 - DispatchList | LEO | ⬜ | AGT-314 |
-| 1.6 | Dashboard v0.2 - Assemble & deploy | LEO | ⬜ | AGT-314 |
-| 1.7 | Heartbeat UI (green/red dots) | LEO | 🔄 | AGT-273 |
+| 1.1 | Dashboard v0.2 - MetricsBar | LEO | ✅ | AGT-314 |
+| 1.2 | Dashboard v0.2 - AgentGrid | LEO | ✅ | AGT-314 |
+| 1.3 | Dashboard v0.2 - AlertsBanner | LEO | ✅ | AGT-314 |
+| 1.4 | Dashboard v0.2 - ActivityFeed | LEO | ✅ | AGT-314 |
+| 1.5 | Dashboard v0.2 - DispatchList | LEO | ✅ | AGT-314 |
+| 1.6 | Dashboard v0.2 - Assemble & deploy | LEO | ✅ | AGT-314 |
+| 1.7 | Heartbeat UI (green/red dots) | LEO | ✅ | AGT-273 |
 | 1.8 | Fix markDispatch POST APIs | SAM | ⬜ | AGT-306 |
 | 1.9 | Reset circuit breakers (7 agents) | SAM | ⬜ | — |
 | 1.10 | Auto-detect blockers & escalate | SAM | ⬜ | AGT-278 |
@@ -49,7 +49,7 @@
 | 1.19 | Coordinate & dispatch agents | MAX | 🔄 | AGT-304 |
 | 1.20 | Update roadmap daily | MAX | 🔄 | — |
 
-**Phase 1 Progress: 7/20 = 35%**
+**Phase 1 Progress: 13/20 = 65%**
 
 ---
 
