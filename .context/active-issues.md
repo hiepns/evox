@@ -1,0 +1,9 @@
+- [AGT-304] [EPIC-MAX] System Redesign & Coordination (In Progress) @guru.sonpiaz@gmail.com
+- [AGT-295] [EPIC-QUINN] Test Automation Suite (Todo) @unassigned
+- [AGT-294] [EPIC-MAYA] Design System - EVOX Visual Language (Todo) @unassigned
+- [AGT-285] Refactor: Use AgentStatusIndicator consistently across all components (In Review) @guru.sonpiaz@gmail.com
+- [AGT-273] Agent heartbeat monitoring (In Progress) @unassigned
+- [AGT-251] [P0] 100x Autonomy — Delete All Human Bottlenecks (In Progress) @unassigned
+- [AGT-187] [VoiceFlow] P1: Setup iOS Shortcut + Whisper API (Todo) @Son Piaz
+- [AGT-185] [P0] Wire up webhooks — config GitHub + Linear + Vercel env vars (Son manual task) (Todo) @unassigned
+- [AGT-93] [P3] Session 3B — Execution UI (Run button + logs viewer) (In Progress) @guru.sonpiaz@gmail.com
