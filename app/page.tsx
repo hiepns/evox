@@ -18,11 +18,8 @@ import { AgentProfileModal } from "@/components/dashboard-v2/agent-profile-modal
 import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
-import { ExecutionTerminal } from "@/components/evox/ExecutionTerminal";
 import { SystemPausedBanner } from "@/components/evox/KillSwitch";
 import { HealthDashboard } from "@/components/evox/HealthDashboard";
-import { AutomationDashboard } from "@/components/evox/AutomationDashboard";
-import { DirectMessagesView } from "@/components/evox/DirectMessagesView";
 import { CommunicationLog } from "@/components/evox/CommunicationLog";
 import { CEODashboard } from "@/components/evox/CEODashboard";
 import { StatsPage } from "@/components/evox/StatsPage";
@@ -175,11 +172,6 @@ export default function Home() {
                 onAssigneeClick={(id) => handleAgentClick(id as Id<"agents">)}
               />
             )}
-            {activeViewTab === "terminal" && (
-              <div className="h-full p-4 overflow-auto">
-                <ExecutionTerminal className="h-full" />
-              </div>
-            )}
             {activeViewTab === "queue" && (
               <div className="h-full p-4 overflow-auto">
                 <DispatchQueue className="h-full" />
@@ -190,12 +182,6 @@ export default function Home() {
             )}
             {activeViewTab === "health" && (
               <HealthDashboard className="h-full" />
-            )}
-            {activeViewTab === "automation" && (
-              <AutomationDashboard className="h-full" />
-            )}
-            {activeViewTab === "messages" && (
-              <DirectMessagesView currentAgentName="son" className="h-full" />
             )}
             {activeViewTab === "comms" && (
               <CommunicationLog className="h-full" />

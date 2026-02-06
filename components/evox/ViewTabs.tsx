@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-export type MainViewTab = "ceo" | "agents" | "kanban" | "terminal" | "queue" | "activity" | "health" | "automation" | "messages" | "comms" | "metrics";
+export type MainViewTab = "ceo" | "agents" | "kanban" | "queue" | "activity" | "health" | "comms" | "metrics";
 
 interface ViewTabsProps {
   activeTab: MainViewTab;
@@ -14,14 +14,11 @@ const tabs: { id: MainViewTab; label: string; shortcut: string }[] = [
   { id: "ceo", label: "CEO", shortcut: "⌘0" },
   { id: "agents", label: "Agents", shortcut: "" },
   { id: "kanban", label: "Kanban", shortcut: "⌘1" },
-  { id: "terminal", label: "Terminal", shortcut: "⌘2" },
-  { id: "queue", label: "Queue", shortcut: "⌘3" },
-  { id: "activity", label: "Feed", shortcut: "⌘4" },
-  { id: "health", label: "Health", shortcut: "⌘5" },
-  { id: "automation", label: "Automation", shortcut: "⌘6" },
-  { id: "messages", label: "Messages", shortcut: "⌘7" },
-  { id: "comms", label: "Comms Log", shortcut: "⌘8" },
-  { id: "metrics", label: "Stats", shortcut: "⌘9" },
+  { id: "queue", label: "Queue", shortcut: "⌘2" },
+  { id: "activity", label: "Feed", shortcut: "⌘3" },
+  { id: "health", label: "Health", shortcut: "⌘4" },
+  { id: "comms", label: "Comms Log", shortcut: "⌘5" },
+  { id: "metrics", label: "Stats", shortcut: "⌘6" },
 ];
 
 /**

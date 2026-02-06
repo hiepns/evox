@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useViewerMode } from "@/contexts/ViewerModeContext";
 import { AgentStatusIndicator } from "./AgentStatusIndicator";
-import { ROLE_LABELS as roleLabels, sortAgents } from "@/lib/constants";
+import { ROLE_LABELS as roleLabels, sortAgents, AGENT_ORDER } from "@/lib/constants";
 
 interface AgentSidebarProps {
   selectedAgentId: Id<"agents"> | null;
@@ -62,16 +62,18 @@ export function AgentSidebar({
   }, [onAgentDoubleClick, isViewerMode]);
 
   const agents: SidebarAgent[] = sortAgents(
-    (Array.isArray(listAgents) ? listAgents : []).map((a) => ({
-      _id: a._id,
-      name: a.name,
-      role: a.role,
-      status: a.status,
-      avatar: a.avatar,
-      currentTaskIdentifier: a.currentTaskIdentifier ?? null,
-      currentTaskTitle: a.currentTaskTitle ?? null,
-      statusSince: a.statusSince ?? null,
-    }))
+    (Array.isArray(listAgents) ? listAgents : [])
+      .filter((a) => (AGENT_ORDER as readonly string[]).includes(a.name.toLowerCase()))
+      .map((a) => ({
+        _id: a._id,
+        name: a.name,
+        role: a.role,
+        status: a.status,
+        avatar: a.avatar,
+        currentTaskIdentifier: a.currentTaskIdentifier ?? null,
+        currentTaskTitle: a.currentTaskTitle ?? null,
+        statusSince: a.statusSince ?? null,
+      }))
   );
 
   if (!agents.length) return null;
