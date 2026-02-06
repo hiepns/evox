@@ -11,7 +11,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 
 /** Valid agent names (canonical list — single source of truth) */
-export const VALID_AGENTS = ["max", "sam", "leo", "quinn", "evox"] as const;
+export const VALID_AGENTS = ["max", "sam", "leo", "quinn", "evox", "nova"] as const;
 export type AgentName = (typeof VALID_AGENTS)[number];
 
 /** Canonical agent ID mapping — name (lowercase) → stable ID */
@@ -21,6 +21,7 @@ export const AGENT_ID_MAP: Record<string, string> = {
   sam: "agt_sam_002",
   leo: "agt_leo_003",
   quinn: "agt_quinn_004",
+  nova: "agt_nova_005",
 };
 
 /** Reverse lookup — stable ID → canonical name */

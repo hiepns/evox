@@ -6,7 +6,7 @@
  */
 
 /** Agent display order: MAX → SAM → LEO → QUINN → EVOX */
-export const AGENT_ORDER = ["max", "sam", "leo", "quinn", "evox"] as const;
+export const AGENT_ORDER = ["max", "sam", "leo", "quinn", "evox", "nova"] as const;
 
 /** Sort a list of objects with a `name` field by AGENT_ORDER */
 export function sortAgents<T extends { name: string }>(list: T[]): T[] {
@@ -27,4 +27,5 @@ export const ROLE_LABELS: Record<string, string> = {
   frontend: "Frontend",
   qa: "QA",
   design: "Design",
+  security: "Security",
 };
