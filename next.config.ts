@@ -54,9 +54,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     const exact = [
       "/standup",
-      "/agents",
       "/tasks",
-      "/messages",
       "/activity",
       "/settings",
       "/registry",
@@ -64,7 +62,6 @@ const nextConfig: NextConfig = {
       "/mission-control",
     ].map((source) => ({ source, destination: "/", permanent: true }));
     const withSlug = [
-      { source: "/agents/:path*", destination: "/", permanent: true },
       { source: "/tasks/:path*", destination: "/", permanent: true },
     ];
     return [...exact, ...withSlug];
