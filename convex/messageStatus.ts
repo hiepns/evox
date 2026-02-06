@@ -16,6 +16,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
+import { resolveAgentIdByName } from "./agentMappings";
 
 // Status enum
 export const MessageStatus = {
@@ -62,8 +63,11 @@ export const markAsSeen = mutation({
       throw new Error("Message not found");
     }
 
+    // Resolve agent name → Convex ID (messages store Convex IDs, not names)
+    const agentId = await resolveAgentIdByName(ctx.db, args.agentName);
+
     // Only recipient can mark as seen
-    if (message.to !== args.agentName) {
+    if (message.to !== agentId) {
       throw new Error("Only recipient can mark message as seen");
     }
 
@@ -388,6 +392,14 @@ export const markAsActed = mutation({
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
 
+    // Resolve agent name → Convex ID (messages store Convex IDs, not names)
+    const agentId = await resolveAgentIdByName(ctx.db, args.agentName);
+
+    // Only recipient can mark as acted
+    if (message.to !== agentId) {
+      throw new Error("Only recipient can mark message as acted");
+    }
+
     const currentStatus = message.statusCode ?? MessageStatus.DELIVERED;
     if (currentStatus >= MessageStatus.ACTED) {
       return { success: true, alreadyActed: true };
@@ -431,6 +443,14 @@ export const markAsReported = mutation({
   handler: async (ctx, args) => {
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
+
+    // Resolve agent name → Convex ID (messages store Convex IDs, not names)
+    const agentId = await resolveAgentIdByName(ctx.db, args.agentName);
+
+    // Only recipient can mark as reported
+    if (message.to !== agentId) {
+      throw new Error("Only recipient can mark message as reported");
+    }
 
     const currentStatus = message.statusCode ?? MessageStatus.DELIVERED;
     if (currentStatus >= MessageStatus.REPORTED) {
