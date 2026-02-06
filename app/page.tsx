@@ -21,6 +21,7 @@ import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
 import { CommunicationLog } from "@/components/evox/CommunicationLog";
 import { CEODashboard } from "@/components/evox/CEODashboard";
+import { HallOfFame } from "@/components/evox/HallOfFame";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
 import { sortAgents, AGENT_ORDER } from "@/lib/constants";
@@ -48,7 +49,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const viewParam = searchParams.get("view") as MainViewTab | null;
-  const activeViewTab: MainViewTab = viewParam && ["ceo", "kanban", "comms"].includes(viewParam) ? viewParam : "kanban";
+  const activeViewTab: MainViewTab = viewParam && ["ceo", "kanban", "comms", "team"].includes(viewParam) ? viewParam : "kanban";
   const setActiveViewTab = useCallback((tab: MainViewTab) => {
     router.replace(`/?view=${tab}`, { scroll: false });
   }, [router]);
@@ -182,6 +183,9 @@ function HomeContent() {
             )}
             {activeViewTab === "comms" && (
               <CommunicationLog className="h-full" />
+            )}
+            {activeViewTab === "team" && (
+              <HallOfFame className="h-full" />
             )}
           </div>
         </main>

@@ -91,6 +91,7 @@ export { DirectMessagesView } from "./DirectMessagesView";
 // DASHBOARDS (Full Page)
 // ============================================
 export { CEODashboard } from "./CEODashboard";
+export { HallOfFame } from "./HallOfFame";
 export { LiveDashboard } from "./LiveDashboard";
 export { HealthDashboard } from "./HealthDashboard";
 export { AutomationDashboard } from "./AutomationDashboard";

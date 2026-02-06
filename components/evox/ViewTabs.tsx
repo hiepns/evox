@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
-export type MainViewTab = "ceo" | "kanban" | "comms";
+export type MainViewTab = "ceo" | "kanban" | "comms" | "team";
 
 interface ViewTabsProps {
   activeTab: MainViewTab;
@@ -15,6 +15,7 @@ const tabs: { id: MainViewTab; label: string; href: string }[] = [
   { id: "ceo", label: "Overview", href: "/?view=ceo" },
   { id: "kanban", label: "Kanban", href: "/?view=kanban" },
   { id: "comms", label: "Comms", href: "/?view=comms" },
+  { id: "team", label: "Team", href: "/?view=team" },
 ];
 
 /**
@@ -56,12 +57,6 @@ export function ViewTabs({ activeTab, onTabChange, className }: ViewTabsProps) {
         </Link>
       ))}
 
-      <Link
-        href="/agents"
-        className="relative px-3 py-2.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors whitespace-nowrap shrink-0"
-      >
-        Team
-      </Link>
     </div>
   );
 }

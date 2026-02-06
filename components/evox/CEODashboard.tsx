@@ -125,7 +125,7 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
           EVOX
         </h1>
         <div className="flex items-center gap-3">
-          <Link href="/agents" className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+          <Link href="/?view=team" className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
             Team
           </Link>
           <div className="flex items-center gap-2">
