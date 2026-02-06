@@ -18,9 +18,19 @@ EVOX_API="https://gregarious-elk-556.convex.site"
 
 cd "$EVOX_DIR"
 
+# Model selection: AGENT_MODEL env var or default to sonnet
+AGENT_MODEL="${AGENT_MODEL:-sonnet}"
+MODEL_FLAG=""
+if [ "$AGENT_MODEL" = "opus" ]; then
+  MODEL_FLAG="--model opus"
+elif [ "$AGENT_MODEL" = "haiku" ]; then
+  MODEL_FLAG="--model haiku"
+fi
+
 echo "🤖 $AGENT_UPPER Autonomous Loop Starting..."
 echo "   Directory: $EVOX_DIR"
 echo "   API: $EVOX_API"
+echo "   Model: $AGENT_MODEL"
 echo ""
 
 # Function to check for messages
@@ -73,7 +83,7 @@ For each unread message:
 
 After responding to ALL messages, say MESSAGES_DONE."
 
-    timeout 300 claude --dangerously-skip-permissions "$PROMPT" 2>/dev/null || true
+    timeout 300 claude --dangerously-skip-permissions $MODEL_FLAG "$PROMPT" 2>/dev/null || true
   else
     echo "   ✅ No unread messages"
   fi
@@ -117,7 +127,7 @@ DO THE WORK. When complete:
 
 Start working now."
 
-    timeout 600 claude --dangerously-skip-permissions "$PROMPT" 2>/dev/null || true
+    timeout 600 claude --dangerously-skip-permissions $MODEL_FLAG "$PROMPT" 2>/dev/null || true
 
   else
     echo "   😴 No pending work"
