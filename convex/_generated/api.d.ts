@@ -49,6 +49,7 @@ import type * as healthMonitor from "../healthMonitor.js";
 import type * as heartbeat from "../heartbeat.js";
 import type * as http from "../http.js";
 import type * as learnings from "../learnings.js";
+import type * as lib_httpAuth from "../lib/httpAuth.js";
 import type * as linearSync from "../linearSync.js";
 import type * as maxMonitor from "../maxMonitor.js";
 import type * as mentions from "../mentions.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   heartbeat: typeof heartbeat;
   http: typeof http;
   learnings: typeof learnings;
+  "lib/httpAuth": typeof lib_httpAuth;
   linearSync: typeof linearSync;
   maxMonitor: typeof maxMonitor;
   mentions: typeof mentions;

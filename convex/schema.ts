@@ -1343,4 +1343,5 @@ export default defineSchema({
     .index("by_category", ["agent", "category"])
     .index("by_importance", ["agent", "importance"])
     .index("by_verified", ["agent", "verified"]),
+
 });
