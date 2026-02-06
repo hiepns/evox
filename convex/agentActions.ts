@@ -877,11 +877,12 @@ export const requestWork = mutation({
     }
 
     // 2. Try auto-dispatch using existing automation system
+    // TODO: Re-implement after automation.ts cleanup
     // Schedule it to run asynchronously
     // @ts-ignore Convex scheduler type inference too deep
-    void ctx.scheduler.runAfter(0, internal.automation.autoDispatchForAgentInternal, {
-      agentName: args.agent,
-    });
+    // void ctx.scheduler.runAfter(0, internal.automation.autoDispatchForAgentInternal, {
+    //   agentName: args.agent,
+    // });
 
     // 3. Log activity immediately (dispatch happens async)
     const maxAgent = await ctx.db

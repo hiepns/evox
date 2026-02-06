@@ -9,6 +9,7 @@
 
 import { internalMutation } from "./_generated/server";
 import { MessageStatus } from "./messageStatus";
+import { resolveAgentNameById } from "./agentMappings";
 
 export const checkSLABreaches = internalMutation({
   handler: async (ctx) => {
@@ -39,9 +40,10 @@ export const checkSLABreaches = internalMutation({
 
       if (existing) continue;
 
+      const agentName = await resolveAgentNameById(ctx.db, msg.to);
       await ctx.db.insert("loopAlerts", {
         messageId: msg._id,
-        agentName: String(msg.to),
+        agentName,
         alertType: "reply_overdue",
         severity: "warning",
         status: "active",
@@ -73,9 +75,10 @@ export const checkSLABreaches = internalMutation({
 
       if (existing) continue;
 
+      const agentName = await resolveAgentNameById(ctx.db, msg.to);
       await ctx.db.insert("loopAlerts", {
         messageId: msg._id,
-        agentName: String(msg.to),
+        agentName,
         alertType: "action_overdue",
         severity: "critical",
         status: "escalated",
@@ -108,9 +111,10 @@ export const checkSLABreaches = internalMutation({
 
       if (existing) continue;
 
+      const agentName = await resolveAgentNameById(ctx.db, msg.to);
       await ctx.db.insert("loopAlerts", {
         messageId: msg._id,
-        agentName: String(msg.to),
+        agentName,
         alertType: "report_overdue",
         severity: "critical",
         status: "escalated",

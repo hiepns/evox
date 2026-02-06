@@ -70,7 +70,8 @@ export const check = internalAction({
     }
 
     // 3. Check for escalated/blocked tasks
-    const escalatedTasks = await ctx.runQuery(api.automation.getEscalatedTasks, {});
+    // TODO: Re-implement after automation.ts cleanup
+    const escalatedTasks: any[] = []; // await ctx.runQuery(api.automation.getEscalatedTasks, {});
     if (escalatedTasks.length > 0) {
       for (const task of escalatedTasks) {
         report.issues.push({

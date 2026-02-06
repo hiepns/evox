@@ -36,32 +36,12 @@ crons.cron(
   {}
 );
 
-// AGT-120: Auto Daily Standup Generation
-// Runs at 6:00 PM UTC (11:00 AM PST / 2:00 PM EST / end of Asia workday)
-// Generates standup summaries and pushes to Son
-crons.cron(
-  "daily-standup",
-  "0 18 * * *", // 6:00 PM UTC daily
-  internal.standup.generateDailyStandup,
-  {}
-);
-
 // AGT-215: Alert System — Check for stuck agents every 5 minutes
 // Triggers alerts when agents are stuck on a task for >30 minutes
 crons.interval(
   "check-stuck-agents",
   { minutes: 5 },
   internal.alerts.checkStuckAgents,
-  {}
-);
-
-// AGT-218: Cloud-based Auto-Dispatch (24/7)
-// Automatically assigns prioritized tasks to idle agents every 5 minutes
-// Replaces local agent-daemon.sh for production use
-crons.interval(
-  "auto-dispatch-cycle",
-  { minutes: 5 },
-  internal.automation.runAutoDispatchCycleInternal,
   {}
 );
 
@@ -110,14 +90,6 @@ crons.interval(
   "auto-recruit-agents",
   { minutes: 15 },
   internal.agentTemplates.checkAndAutoSpawn,
-  {}
-);
-
-// AGT-317: Blocker Detection — Scan for blocked tasks every 5 minutes
-crons.interval(
-  "detect-blocked-tasks",
-  { minutes: 5 },
-  internal.blockerDetection.detectBlockedTasks,
   {}
 );
 

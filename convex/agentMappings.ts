@@ -29,6 +29,21 @@ export async function resolveAgentIdByName(
   return mapping.convexAgentId;
 }
 
+/** Resolve Convex agent ID to agent name. Throws if mapping missing. */
+export async function resolveAgentNameById(
+  db: GenericDatabaseReader<DataModel>,
+  agentId: Id<"agents">
+): Promise<string> {
+  const allMappings = await db.query("agentMappings").collect();
+  const mapping = allMappings.find((m) => m.convexAgentId === agentId);
+  if (!mapping) {
+    throw new Error(
+      `Agent mapping not found for ID "${agentId}". Ensure agentMappings has max/sam/leo (run seed).`
+    );
+  }
+  return mapping.name;
+}
+
 /** Get Linear user ID for agent (for API attribution). Returns undefined if not set. */
 export async function getLinearUserIdByName(
   db: GenericDatabaseReader<DataModel>,

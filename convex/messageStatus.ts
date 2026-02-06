@@ -16,7 +16,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 import { api } from "./_generated/api";
-import { resolveAgentIdByName } from "./agentMappings";
+import { resolveAgentIdByName, resolveAgentNameById } from "./agentMappings";
 
 // Status enum
 export const MessageStatus = {
@@ -63,11 +63,11 @@ export const markAsSeen = mutation({
       throw new Error("Message not found");
     }
 
-    // Resolve agent name → Convex ID (messages store Convex IDs, not names)
-    const agentId = await resolveAgentIdByName(ctx.db, args.agentName);
+    // Resolve message.to (Convex ID) → agent name for comparison
+    const recipientName = await resolveAgentNameById(ctx.db, message.to);
 
     // Only recipient can mark as seen
-    if (message.to !== agentId) {
+    if (recipientName !== args.agentName.toLowerCase()) {
       throw new Error("Only recipient can mark message as seen");
     }
 

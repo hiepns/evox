@@ -10,6 +10,7 @@
 import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { MessageStatus } from "./messageStatus";
+import { resolveAgentNameById } from "./agentMappings";
 
 /**
  * Hourly aggregation — per-agent loop performance.
@@ -40,7 +41,7 @@ export const aggregateHourlyMetrics = internalMutation({
     }>();
 
     for (const msg of messages) {
-      const agent = String(msg.to);
+      const agent = await resolveAgentNameById(ctx.db, msg.to);
       if (!agentStats.has(agent)) {
         agentStats.set(agent, {
           total: 0, closed: 0, broken: 0,
@@ -138,7 +139,7 @@ export const aggregateDailyMetrics = internalMutation({
 
     for (const msg of messages) {
       total++;
-      const agent = String(msg.to);
+      const agent = await resolveAgentNameById(ctx.db, msg.to);
       if (!agentTotals.has(agent)) agentTotals.set(agent, { total: 0, closed: 0 });
       const at = agentTotals.get(agent)!;
       at.total++;
