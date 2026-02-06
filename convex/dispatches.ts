@@ -116,19 +116,19 @@ export const fail = mutation({
     const currentRetry = dispatch.retryCount ?? 0;
     const maxRetries = dispatch.maxRetries ?? MAX_RETRIES;
 
-    await ctx.db.patch(dispatchId, {
-      status: "failed",
-      completedAt: Date.now(),
-      error,
-      retryCount: currentRetry,
-    });
-
     // AGT-308: Auto-retry with exponential backoff
     if (currentRetry < maxRetries) {
       const backoffMs = RETRY_BACKOFF_MS[Math.min(currentRetry, RETRY_BACKOFF_MS.length - 1)];
       const nextRetryAt = Date.now() + backoffMs;
 
-      await ctx.db.patch(dispatchId, { nextRetryAt });
+      // Single patch with all fields to avoid write conflicts
+      await ctx.db.patch(dispatchId, {
+        status: "failed",
+        completedAt: Date.now(),
+        error,
+        retryCount: currentRetry,
+        nextRetryAt,
+      });
 
       await ctx.scheduler.runAfter(backoffMs, internal.dispatches.retryFailedDispatch, {
         originalDispatchId: dispatchId,
@@ -138,7 +138,13 @@ export const fail = mutation({
         `[AutoRetry] Dispatch ${dispatchId} failed (attempt ${currentRetry + 1}/${maxRetries}). Retrying in ${backoffMs / 60000}m.`
       );
     } else {
-      // Max retries exhausted — escalate to MAX
+      // Max retries exhausted — single patch, then escalate to MAX
+      await ctx.db.patch(dispatchId, {
+        status: "failed",
+        completedAt: Date.now(),
+        error,
+        retryCount: currentRetry,
+      });
       await ctx.scheduler.runAfter(0, internal.dispatches.escalateFailedDispatch, {
         dispatchId,
       });

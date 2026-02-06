@@ -978,6 +978,12 @@ export const syncStatusFromLinear = mutation({
     };
 
     const mappedStatus = statusMap[status] || "backlog";
+
+    // Skip write if status hasn't changed (avoids conflicts from webhook retries)
+    if (task.status === mappedStatus) {
+      return task._id;
+    }
+
     const now = Date.now();
 
     await ctx.db.patch(task._id, {

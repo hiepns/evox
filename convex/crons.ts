@@ -36,11 +36,12 @@ crons.cron(
   {}
 );
 
-// AGT-215: Alert System — Check for stuck agents every 5 minutes
+// AGT-215: Alert System — Check for stuck agents every 7 minutes
 // Triggers alerts when agents are stuck on a task for >30 minutes
+// Staggered from sync-linear (5m) to reduce write conflicts
 crons.interval(
   "check-stuck-agents",
-  { minutes: 5 },
+  { minutes: 7 },
   internal.alerts.checkStuckAgents,
   {}
 );
@@ -48,9 +49,10 @@ crons.interval(
 // AGT-216: Auto-Recovery — Self-Healing Agent Restart & Retry
 // Checks for crashed agents (heartbeat timeout) and auto-restarts with backoff
 // Circuit breaker stops after 3 consecutive failures
+// Staggered to 6 min to avoid overlap with sync-linear (5m) and stuck-agents (7m)
 crons.interval(
   "auto-recovery-check",
-  { minutes: 5 },
+  { minutes: 6 },
   internal.recovery.runRecoveryCheck,
   {}
 );
@@ -66,11 +68,12 @@ crons.interval(
   {}
 );
 
-// AGT-247: Event Bus — Cleanup expired events every 5 minutes
+// AGT-247: Event Bus — Cleanup expired events every 9 minutes
 // Removes events older than 5 minutes that were never delivered
+// Staggered to reduce cron overlap
 crons.interval(
   "cleanup-expired-events",
-  { minutes: 5 },
+  { minutes: 9 },
   internal.agentEvents.cleanupExpiredEvents,
   {}
 );
@@ -93,11 +96,12 @@ crons.interval(
   {}
 );
 
-// CORE-209 + AGT-337: The Loop — SLA Monitor every 5 minutes
+// CORE-209 + AGT-337: The Loop — SLA Monitor every 8 minutes
 // Detects AND auto-escalates: reply >15min → DM MAX, action >2h → critical MAX, report >24h → broken + CEO dispatch
+// Staggered from sync-linear (5m) to reduce write conflicts
 crons.interval(
   "loop-sla-monitor",
-  { minutes: 5 },
+  { minutes: 8 },
   internal.loopMonitor.checkSLABreaches,
   {}
 );
