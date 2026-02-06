@@ -52,7 +52,7 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-white/40 transition-colors hover:text-white/90"
+              className="rounded p-1 text-secondary transition-colors hover:text-primary"
               aria-label="Close drawer"
             >
               ✕

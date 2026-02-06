@@ -60,7 +60,7 @@ export function MetricCard({
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-white/30">
+        <span className="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-tertiary">
           {title}
         </span>
         {icon && (
@@ -86,7 +86,7 @@ export function MetricCard({
       {/* Footer: Subtitle or Trend */}
       <div className="mt-1 flex items-center gap-2">
         {subtitle && (
-          <span className="text-[9px] sm:text-[10px] text-white/40">
+          <span className="text-[9px] sm:text-[10px] text-secondary">
             {subtitle}
           </span>
         )}
@@ -116,7 +116,7 @@ export function MetricInline({
 }) {
   return (
     <div className={cn("flex items-center justify-between", className)}>
-      <span className="text-xs text-white/40">{label}</span>
+      <span className="text-xs text-secondary">{label}</span>
       <span className={cn("text-xs sm:text-sm font-medium", colorMap[color])}>
         {value}
       </span>

@@ -84,9 +84,9 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
         <div className="flex-1 space-y-3 p-3">
           {/* Completion Rate */}
           <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Completion</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Completion</span>
             <div className="mt-1 text-2xl font-semibold text-amber-400">{counts.completionRate}%</div>
-            <div className="text-xs text-white/30">({counts.done}/{counts.total})</div>
+            <div className="text-xs text-tertiary">({counts.done}/{counts.total})</div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
               <div
                 className="h-full rounded-full bg-amber-400 transition-[width] duration-300"
@@ -100,7 +100,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-blue-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">In Progress</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">In Progress</span>
               </div>
               <span className="text-lg font-semibold text-blue-400">{counts.inProgress}</span>
             </div>
@@ -108,7 +108,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Queue</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Queue</span>
               </div>
               <span className="text-lg font-semibold text-yellow-400">{counts.todo}</span>
             </div>
@@ -116,7 +116,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-white/50" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Backlog</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Backlog</span>
               </div>
               <span className="text-lg font-semibold text-white/60">{counts.backlog}</span>
             </div>
@@ -124,7 +124,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-green-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Done</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Done</span>
               </div>
               <span className="text-lg font-semibold text-green-400">{counts.done}</span>
             </div>

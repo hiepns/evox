@@ -199,7 +199,7 @@ export function MobileCEODashboard({ className }: MobileCEODashboardProps) {
 
       {/* 4. Team Status — Quick view */}
       <div>
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
           Team ({heroData.activeAgents}/{heroData.totalAgents} active)
         </h3>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -222,7 +222,7 @@ export function MobileCEODashboard({ className }: MobileCEODashboardProps) {
 
       {/* 5. Activity Stream — Recent events */}
       <div>
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-white/40 mb-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-secondary mb-2">
           Live Activity
         </h3>
         <div className="space-y-1 rounded-lg border border-border-default bg-surface-1/50 p-2">
@@ -262,7 +262,7 @@ function MetricBox({
       <div className={cn("text-2xl font-bold tabular-nums", colorMap[color])}>
         {value}
       </div>
-      <div className="text-[10px] uppercase text-white/40 mt-1">{label}</div>
+      <div className="text-[10px] uppercase text-secondary mt-1">{label}</div>
     </div>
   );
 }

@@ -5,6 +5,7 @@
 
 import { query } from "./_generated/server";
 import { v } from "convex/values";
+import { VALID_AGENTS } from "./agentRegistry";
 
 /**
  * Get agent online status summary
@@ -13,7 +14,10 @@ import { v } from "convex/values";
 export const getAgentStatus = query({
   args: {},
   handler: async (ctx) => {
-    const agents = await ctx.db.query("agents").collect();
+    const allAgents = await ctx.db.query("agents").collect();
+    const agents = allAgents.filter((a) =>
+      VALID_AGENTS.includes(a.name.toLowerCase() as any)
+    );
     const now = Date.now();
     const ONLINE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
@@ -347,5 +351,39 @@ export const getNorthStarProgress = query({
       phase: automationMetrics?.currentPhase || "Phase 1",
       milestones: [],
     };
+  },
+});
+
+/**
+ * Get recent agent comms from agentMessages table
+ * (unifiedMessages is empty — agentMessages has real data)
+ */
+export const getRecentComms = query({
+  args: { limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 5;
+
+    const messages = await ctx.db
+      .query("agentMessages")
+      .order("desc")
+      .take(limit);
+
+    // Hydrate agent names
+    const agents = await ctx.db.query("agents").collect();
+    const agentMap = new Map(agents.map((a) => [a._id.toString(), a]));
+
+    return messages.map((msg) => {
+      const fromAgent = agentMap.get(msg.from.toString());
+      const toAgent = agentMap.get(msg.to.toString());
+      return {
+        _id: msg._id,
+        from: fromAgent?.name?.toLowerCase() || "?",
+        to: toAgent?.name?.toLowerCase() || "?",
+        content: msg.content,
+        type: msg.type,
+        timestamp: msg._creationTime,
+        keywords: [] as string[],
+      };
+    });
   },
 });

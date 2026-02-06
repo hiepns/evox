@@ -82,7 +82,7 @@ export function ActivityPage() {
               className={cn(
                 "rounded border px-2 py-1 text-[11px] font-medium uppercase tracking-wide transition-colors",
                 filter === f
-                  ? "border-white/20 bg-white/[0.05] text-white/90"
+                  ? "border-white/20 bg-white/[0.05] text-primary"
                   : "border-border-default text-secondary hover:border-gray-500 hover:text-primary"
               )}
             >

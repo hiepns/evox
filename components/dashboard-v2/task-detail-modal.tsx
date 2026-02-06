@@ -87,17 +87,17 @@ export function TaskDetailModal({ open, task, onClose }: TaskDetailModalProps) {
                 {status.replace("_", " ")}
               </span>
               {task.priority && (
-                <span className="text-xs text-white/40">{priorityLabels[task.priority] ?? task.priority}</span>
+                <span className="text-xs text-secondary">{priorityLabels[task.priority] ?? task.priority}</span>
               )}
             </div>
-            <h2 className="text-lg font-semibold text-white/90 truncate" title={task.title}>
+            <h2 className="text-lg font-semibold text-primary truncate" title={task.title}>
               {task.title}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="ml-4 rounded p-1 text-white/40 transition-colors hover:text-white/90"
+            className="ml-4 rounded p-1 text-secondary transition-colors hover:text-primary"
             aria-label="Close"
           >
             ✕
@@ -109,7 +109,7 @@ export function TaskDetailModal({ open, task, onClose }: TaskDetailModalProps) {
           {/* Assignee */}
           {task.assigneeName && (
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2">Assignee</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">Assignee</h3>
               <div className="flex items-center gap-2">
                 {task.assigneeAvatar && (
                   <Avatar className="h-6 w-6 border border-white/[0.08]">
@@ -125,7 +125,7 @@ export function TaskDetailModal({ open, task, onClose }: TaskDetailModalProps) {
 
           {/* Description */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2">Description</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">Description</h3>
             <p className="text-sm text-white/60 whitespace-pre-wrap">
               {task.description || fullTask?.description || "—"}
             </p>
@@ -135,13 +135,13 @@ export function TaskDetailModal({ open, task, onClose }: TaskDetailModalProps) {
           <div className="grid grid-cols-2 gap-4">
             {createdAt && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-1">Created</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">Created</h3>
                 <p className="text-xs text-white/50">{formatDistanceToNow(createdAt, { addSuffix: true })}</p>
               </div>
             )}
             {updatedAt && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-1">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-1">
                   {isCompleted ? "Completed" : "Updated"}
                 </h3>
                 <p className="text-xs text-white/50">{formatDistanceToNow(updatedAt, { addSuffix: true })}</p>
@@ -156,7 +156,7 @@ export function TaskDetailModal({ open, task, onClose }: TaskDetailModalProps) {
                 href={task.linearUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/[0.05] hover:text-white/90"
+                className="inline-flex items-center gap-2 rounded border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/[0.05] hover:text-primary"
               >
                 <ExternalLink className="h-4 w-4" />
                 Open in Linear

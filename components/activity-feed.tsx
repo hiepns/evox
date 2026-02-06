@@ -96,12 +96,12 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
               <span className={cn("shrink-0 truncate text-xs", verbColor)}>{verb}</span>
               <span className="min-w-0 shrink-0 font-mono text-xs text-white/70 whitespace-nowrap">{ticketId}</span>
               <span className="min-w-0 flex-1" aria-hidden />
-              <span className="shrink-0 text-[10px] text-white/30 ml-auto">
+              <span className="shrink-0 text-[10px] text-tertiary ml-auto">
                 {formatDistanceToNow(ts, { addSuffix: true })}
               </span>
             </div>
             <div className="flex min-h-[1rem] items-center gap-2 pl-6">
-              <span className="min-w-0 max-w-full flex-1 truncate text-xs text-white/40" title={title}>
+              <span className="min-w-0 max-w-full flex-1 truncate text-xs text-secondary" title={title}>
                 {title}
               </span>
               {commitHash && (

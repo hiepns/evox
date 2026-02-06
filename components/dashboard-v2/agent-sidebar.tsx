@@ -56,13 +56,13 @@ export function AgentSidebar({ selectedAgentId, onAgentClick, className = "" }: 
       )}
     >
       <div className="flex shrink-0 items-center justify-center border-b border-white/[0.06] px-3 py-2 min-[1200px]:justify-between">
-        <span className="hidden min-[1200px]:inline text-[10px] tracking-[0.2em] uppercase text-white/30">
+        <span className="hidden min-[1200px]:inline text-[10px] tracking-[0.2em] uppercase text-tertiary">
           AGENTS
         </span>
         <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-white/60 hidden min-[1200px]:inline">
           {agents.length}
         </span>
-        <span className="text-[11px] font-medium text-white/40 min-[1200px]:hidden">{agents.length}</span>
+        <span className="text-[11px] font-medium text-secondary min-[1200px]:hidden">{agents.length}</span>
       </div>
       <nav className="flex-1 overflow-y-auto">
         {agents.map((a) => {
@@ -85,12 +85,12 @@ export function AgentSidebar({ selectedAgentId, onAgentClick, className = "" }: 
               </span>
               <div className="min-w-0 flex-1 min-[1200px]:mt-1">
                 <div className="flex items-center gap-2 hidden min-[1200px]:flex">
-                  <span className="truncate text-sm font-semibold text-white/90">{a.name}</span>
-                  <span className="ml-auto shrink-0 text-xs text-white/40">{roleLabels[a.role] ?? a.role}</span>
+                  <span className="truncate text-sm font-semibold text-primary">{a.name}</span>
+                  <span className="ml-auto shrink-0 text-xs text-secondary">{roleLabels[a.role] ?? a.role}</span>
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5 hidden min-[1200px]:flex">
                   <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} aria-hidden />
-                  <span className="text-xs text-white/40 truncate">
+                  <span className="text-xs text-secondary truncate">
                     {a.currentTaskIdentifier ? (
                       <span className="font-mono">{a.currentTaskIdentifier}</span>
                     ) : (

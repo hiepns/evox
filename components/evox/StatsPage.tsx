@@ -56,7 +56,7 @@ function CountCard({ label, value, color }: { label: string; value: number; colo
   return (
     <div className={cn("rounded-lg border p-4 text-center", colorMap[color] || colorMap.zinc)}>
       <div className="text-3xl font-bold tabular-nums">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-white/30 mt-1">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-tertiary mt-1">{label}</div>
     </div>
   );
 }
@@ -143,7 +143,7 @@ export function StatsPage({ className }: StatsPageProps) {
               "px-4 py-2.5 rounded-lg text-sm font-medium transition-all min-h-[44px]",
               mode === m
                 ? "bg-white/10 text-white"
-                : "text-white/30 hover:bg-white/5 hover:text-white/60"
+                : "text-tertiary hover:bg-white/5 hover:text-white/60"
             )}
           >
             {TIME_LABELS[m]}
@@ -154,7 +154,7 @@ export function StatsPage({ className }: StatsPageProps) {
       {/* Completion Progress */}
       <div className="rounded-lg border border-white/10 bg-surface-1/50 p-5">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium uppercase tracking-wider text-white/40">Completion</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-secondary">Completion</span>
           <span className="text-sm text-white/50">
             {counts.done}/{counts.total} tasks
           </span>
@@ -190,29 +190,29 @@ export function StatsPage({ className }: StatsPageProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Velocity Trend */}
         <div className="rounded-lg border border-white/10 bg-surface-1/50 p-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-white/40 mb-3">
+          <div className="text-xs font-medium uppercase tracking-wider text-secondary mb-3">
             Velocity ({mode === "30days" ? "30 days" : "7 days"})
           </div>
           <VelocityBars data={velocityTrend} />
-          <div className="mt-2 text-xs text-white/30">
+          <div className="mt-2 text-xs text-tertiary">
             Avg: {velocityTrend.length > 0 ? (velocityTrend.reduce((a, b) => a + b, 0) / velocityTrend.length).toFixed(1) : "0"} tasks/day
           </div>
         </div>
 
         {/* Cost Summary */}
         <div className="rounded-lg border border-white/10 bg-surface-1/50 p-4">
-          <div className="text-xs font-medium uppercase tracking-wider text-white/40 mb-3">Cost</div>
+          <div className="text-xs font-medium uppercase tracking-wider text-secondary mb-3">Cost</div>
           <div className="space-y-3">
             <div className="flex items-baseline justify-between">
-              <span className="text-white/40 text-sm">Total Spend</span>
+              <span className="text-secondary text-sm">Total Spend</span>
               <span className="text-2xl font-bold text-emerald-400 tabular-nums">${totalCost.toFixed(2)}</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-white/40 text-sm">Avg per Task</span>
+              <span className="text-secondary text-sm">Avg per Task</span>
               <span className="text-lg font-bold text-white/60 tabular-nums">${avgCostPerTask.toFixed(2)}</span>
             </div>
             <div className="flex items-baseline justify-between">
-              <span className="text-white/40 text-sm">Tasks Done</span>
+              <span className="text-secondary text-sm">Tasks Done</span>
               <span className="text-lg font-bold text-blue-400 tabular-nums">{counts.done}</span>
             </div>
           </div>

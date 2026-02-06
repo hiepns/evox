@@ -49,7 +49,7 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
   const liveFeed = useQuery(api.ceoMetrics.getLiveFeed, { limit: 5 });
   const commits = useQuery(api.gitActivity.getRecent, { limit: 5 });
   const velocityTrend = useQuery(api.dashboard.getVelocityTrend, { days: 7 });
-  const comms = useQuery(api.dashboard.getMessagesWithKeywords, { limit: 5 });
+  const comms = useQuery(api.ceoMetrics.getRecentComms, { limit: 5 });
 
   // Computed values
   const velocity = useMemo(() => {
@@ -118,7 +118,7 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
   const isLoading = !dataLoaded;
 
   return (
-    <div className="min-h-screen bg-base text-white">
+    <div className="h-full overflow-y-auto bg-base text-white">
       {/* ─── Header ─── */}
       <header className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border-default">
         <h1 className="text-lg font-bold tracking-tight">
@@ -200,8 +200,8 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
             ) : (
               <div className="flex items-center gap-2 text-sm font-medium">
                 <span className="text-emerald-400">{completed} done</span>
-                <span className="text-blue-400">{inProgress} wip</span>
-                <span className="text-primary0">{blocked} blocked</span>
+                <span className="text-blue-400">{inProgress} in progress</span>
+                <span className="text-amber-400">{blocked} blocked</span>
               </div>
             )}
           </div>

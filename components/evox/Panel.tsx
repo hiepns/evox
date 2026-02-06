@@ -67,7 +67,7 @@ export function PanelSection({
   return (
     <div className={cn("border-t border-evox-border pt-3 mt-3", className)}>
       {title && (
-        <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white/40 mb-2">
+        <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-secondary mb-2">
           {title}
         </div>
       )}

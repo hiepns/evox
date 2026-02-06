@@ -52,9 +52,9 @@ export function AnalyticsBar({ taskCounts }: AnalyticsBarProps) {
       {/* Completion Chip — highlight with progress bar */}
       <div className={chipBase}>
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">Completion</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-secondary">Completion</span>
           <span className="text-xl font-semibold text-amber-400">{stats.completionRate}%</span>
-          <span className="text-sm text-white/30">({stats.completed}/{stats.total})</span>
+          <span className="text-sm text-tertiary">({stats.completed}/{stats.total})</span>
           <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.08]">
             <div
               className="h-full rounded-full bg-amber-400 transition-[width] duration-300"
@@ -69,7 +69,7 @@ export function AnalyticsBar({ taskCounts }: AnalyticsBarProps) {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" aria-hidden />
-            <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">In Progress</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-secondary">In Progress</span>
           </div>
           <span className="text-xl font-semibold text-blue-400">{stats.inProgress}</span>
         </div>
@@ -80,7 +80,7 @@ export function AnalyticsBar({ taskCounts }: AnalyticsBarProps) {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" aria-hidden />
-            <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">Queue</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-secondary">Queue</span>
           </div>
           <span className="text-xl font-semibold text-yellow-400">{stats.todo}</span>
         </div>
@@ -91,7 +91,7 @@ export function AnalyticsBar({ taskCounts }: AnalyticsBarProps) {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/50" aria-hidden />
-            <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">Backlog</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-secondary">Backlog</span>
           </div>
           <span className="text-xl font-semibold text-white/60">{stats.backlog}</span>
         </div>
@@ -101,7 +101,7 @@ export function AnalyticsBar({ taskCounts }: AnalyticsBarProps) {
       {stats.lastSyncTime && (
         <div className={chipBase}>
           <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-white/40">Last Sync</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider text-secondary">Last Sync</span>
             <span className="text-sm font-semibold text-white/60">{formatDistanceToNow(stats.lastSyncTime, { addSuffix: true })}</span>
           </div>
         </div>

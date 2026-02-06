@@ -78,7 +78,7 @@ export function AlertList({
   return (
     <div className={cn("space-y-2", className)}>
       {title && (
-        <h3 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-white/40 mb-2">
+        <h3 className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-secondary mb-2">
           {title} ({sortedAlerts.length})
         </h3>
       )}

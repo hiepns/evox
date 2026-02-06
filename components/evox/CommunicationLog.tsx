@@ -105,7 +105,7 @@ export function CommunicationLog({ className }: CommunicationLogProps) {
                     "px-3 py-1 rounded-full text-xs font-medium uppercase transition-colors border",
                     selectedAgent === agent
                       ? "bg-blue-500/20 text-blue-400 border-blue-500/40"
-                      : "bg-surface-4 text-secondary border-border-default hover:bg-surface-4 hover:text-white"
+                      : "bg-surface-4 text-primary border-border-default hover:bg-surface-4 hover:text-white"
                   )}
                 >
                   {agent}
@@ -129,7 +129,7 @@ export function CommunicationLog({ className }: CommunicationLogProps) {
                     "px-3 py-1 rounded-full text-xs font-medium uppercase transition-colors border",
                     selectedType === type
                       ? MESSAGE_TYPE_COLORS[type]
-                      : "bg-surface-4 text-secondary border-border-default hover:bg-surface-4 hover:text-white"
+                      : "bg-surface-4 text-primary border-border-default hover:bg-surface-4 hover:text-white"
                   )}
                 >
                   {type}
