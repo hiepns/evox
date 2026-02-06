@@ -1,6 +1,6 @@
 # EVOX Mission Control — Agent Rules
 
-Auto-loaded every Claude Code session. Last updated: Feb 4, 2026.
+Auto-loaded every Claude Code session. Last updated: Feb 5, 2026.
 
 ## Constitution
 
@@ -85,6 +85,116 @@ npx convex run agentActions:completeTask '{"agent":"sam","ticket":"AGT-XX","acti
 
 ---
 
+## Architecture Rules (MANDATORY — Feb 5, 2026)
+
+These rules exist because we found 30-40% of the codebase is duplicate or dead code.
+**Every agent MUST follow these rules. Violations will be rejected in review.**
+
+### Rule 1: No New Files Without Search
+
+Before creating ANY new file, search for existing files that do the same thing:
+```bash
+# Before creating a new component
+grep -rn "ActivityFeed\|activity.*feed" components/ --include="*.tsx" -l
+# Before creating a new convex function
+grep -rn "getMessages\|sendMessage" convex/ --include="*.ts" -l
+```
+**If a similar file exists → EDIT it. Do NOT create a new one.**
+
+We currently have 7 dashboard variants and 4 feed variants because agents kept creating instead of editing.
+
+### Rule 2: Agent Identity — Use String Names, NOT Convex IDs
+
+The canonical agent identifier is the **lowercase string name**: `"sam"`, `"leo"`, `"max"`, `"quinn"`.
+
+| Context | Use | Example |
+|---------|-----|---------|
+| API params | `v.string()` | `agentName: "sam"` |
+| DB storage (new tables) | `v.string()` | `fromAgent: "sam"` |
+| DB storage (legacy tables) | `v.id("agents")` | Resolve with `resolveAgentIdByName()` |
+| Comparing DB field to name | **ALWAYS resolve first** | `resolveAgentNameById(msg.to) === "sam"` |
+
+**NEVER compare `v.id("agents")` directly with a string name. They are different types.**
+
+```typescript
+// WRONG — will always fail
+if (message.to !== agentName) { ... }
+
+// CORRECT — resolve ID to name first
+const recipientName = await resolveAgentNameById(ctx.db, message.to);
+if (recipientName !== agentName) { ... }
+```
+
+### Rule 3: Single Source of Truth
+
+These constants must be imported, never duplicated:
+
+| Constant | Source File | What |
+|----------|------------|------|
+| Agent list | `convex/agentRegistry.ts` | `AGENT_ID_MAP` — all agents |
+| Valid agents | `convex/agentRegistry.ts` | `VALID_AGENTS` array |
+| Status codes | `convex/messageStatus.ts` | `MessageStatus` enum (0-5) |
+| SLA timers | `convex/messageStatus.ts` | `SLA` object |
+| Status labels | `convex/messageStatus.ts` | `StatusLabels` map |
+
+**NEVER hardcode agent lists like `["sam", "leo", "max"]` in random files.**
+
+### Rule 4: One Messaging Table
+
+All new messaging code MUST use `unifiedMessages` table.
+
+| Table | Status | Action |
+|-------|--------|--------|
+| `unifiedMessages` | **ACTIVE — use this** | All new code |
+| `agentMessages` | Legacy (Loop depends on it) | Read-only until migrated |
+| `messages` | Legacy | Do not use |
+| `meshMessages` | Legacy | Do not use |
+
+### Rule 5: No New Schema Tables Without CEO Approval
+
+We have 48 tables. Most MVPs have 10-15.
+
+**Before adding a table:**
+1. Check if an existing table can be extended
+2. Document why a new table is needed
+3. Get CEO approval via EVOX
+
+**Tables that probably should be merged:**
+- `activities` + `activityEvents` + `activityLogs` → 1 table
+- `learnings` + `orgLearnings` + `agentLearnings` → 1 table
+- `executionLogs` + `engineLogs` → 1 table
+
+### Rule 6: Proof of Work
+
+Marking a ticket "Done" requires:
+```
+1. Commit hash (git log --oneline -1)
+2. Files changed (git diff --stat HEAD~1)
+3. Build status (npx next build → pass/fail)
+```
+**No commit hash = not done.** EVOX will verify.
+
+### Rule 7: Delete Dead Code
+
+When replacing a component or function:
+1. **Delete the old file** — don't leave it "just in case"
+2. **Remove imports** referencing the old file
+3. **Verify build passes** after deletion
+
+If unsure whether code is used: `grep -rn "ComponentName" . --include="*.tsx" --include="*.ts" | grep -v node_modules`
+
+### Rule 8: Max File Size
+
+| File Type | Max Lines | Action if exceeded |
+|-----------|-----------|-------------------|
+| Convex function file | 500 | Split into queries + mutations |
+| React component | 300 | Extract sub-components |
+| HTTP routes | 500 | Split by domain (agents, tasks, messaging) |
+
+**Current violators:** `http.ts` (3,396), `schema.ts` (1,411), `tasks.ts` (1,210), `agentActions.ts` (922)
+
+---
+
 ## Quality Gates
 
 | Rule | Check |
@@ -94,6 +204,10 @@ npx convex run agentActions:completeTask '{"agent":"sam","ticket":"AGT-XX","acti
 | All files committed | `git status` |
 | Case-insensitive status | Always `.toLowerCase()` |
 | Attribution correct | Use `completeTask` API, not direct DB writes |
+| No duplicate files | Search before creating (Rule 1) |
+| Agent identity correct | String names, resolve IDs (Rule 2) |
+| No hardcoded agent lists | Import from `agentRegistry.ts` (Rule 3) |
+| Proof of work | Commit hash + files + build status (Rule 6) |
 
 ---
 
