@@ -21,15 +21,13 @@ interface AgentCardProps {
   status: AgentStatus;
   currentTask?: string;
   avatar: string;
-  /** Last heartbeat (lastSeen) from agent */
-  lastHeartbeat?: Date;
-  /** Last activity timestamp from activities table (preferred for "Last active") */
+  /** Last activity timestamp from activities table */
   lastActivityAt?: Date;
   /** Unread message count (AGT-123 boot sequence) */
   unreadCount?: number;
   /** AGT-147: Per-agent task counts (backlog · in progress · done) */
   taskCounts?: AgentTaskCounts;
-  /** AGT-147: Max is session-based; show "Session-based" instead of heartbeat time */
+  /** AGT-147: Max is session-based; show "Session-based" instead of last activity time */
   sessionBased?: boolean;
 }
 
@@ -68,7 +66,6 @@ export function AgentCard({
   status,
   currentTask,
   avatar,
-  lastHeartbeat,
   lastActivityAt,
   unreadCount = 0,
   taskCounts,
@@ -86,12 +83,11 @@ export function AgentCard({
     return `${Math.floor(hours / 24)}d ago`;
   };
 
-  // Prefer last activity from activities table; fallback to lastHeartbeat (lastSeen)
-  const lastActive = lastActivityAt ?? lastHeartbeat;
+  const lastActive = lastActivityAt;
 
-  // Get status based on last heartbeat (for tooltip)
+  // Get status based on last activity
   const getAgentStatus = () => {
-    const ref = lastHeartbeat ?? lastActivityAt;
+    const ref = lastActivityAt;
     if (!ref) return { status: "offline", color: "bg-red-500", label: "Offline" };
     const now = new Date();
     const minutesAgo = Math.floor((now.getTime() - ref.getTime()) / 60000);

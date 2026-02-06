@@ -18,8 +18,6 @@ import { AgentProfileModal } from "@/components/dashboard-v2/agent-profile-modal
 import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
-import { SystemPausedBanner } from "@/components/evox/KillSwitch";
-import { HealthDashboard } from "@/components/evox/HealthDashboard";
 import { CommunicationLog } from "@/components/evox/CommunicationLog";
 import { CEODashboard } from "@/components/evox/CEODashboard";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
@@ -123,7 +121,6 @@ export default function Home() {
 
   return (
     <div className="flex h-screen flex-col bg-zinc-950">
-      <SystemPausedBanner />
       <NotificationTopBarWrapper
         agentsActive={activeCount}
         tasksInQueue={taskCounts.todo ?? 0}
@@ -167,9 +164,6 @@ export default function Home() {
                 onTaskClick={handleTaskClick}
                 onAssigneeClick={(id) => handleAgentClick(id as Id<"agents">)}
               />
-            )}
-            {activeViewTab === "health" && (
-              <HealthDashboard className="h-full" />
             )}
             {activeViewTab === "comms" && (
               <CommunicationLog className="h-full" />

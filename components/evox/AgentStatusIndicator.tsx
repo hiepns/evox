@@ -96,17 +96,3 @@ export function getStatusLabel(status: string | undefined | null): string {
   return labels[normalized];
 }
 
-/**
- * Determines if an agent is considered online based on lastHeartbeat
- * @param lastHeartbeat - Unix timestamp in milliseconds
- * @param thresholdMinutes - Minutes before considered offline (default: 15)
- */
-export function isAgentOnline(
-  lastHeartbeat: number | undefined | null,
-  thresholdMinutes: number = 15
-): boolean {
-  if (!lastHeartbeat) return false;
-  const now = Date.now();
-  const thresholdMs = thresholdMinutes * 60 * 1000;
-  return now - lastHeartbeat < thresholdMs;
-}

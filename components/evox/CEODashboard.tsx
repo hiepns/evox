@@ -1,27 +1,25 @@
 "use client";
 
 /**
- * AGT-324: CEO Dashboard v0.3 — LEAN
+ * AGT-324: CEO Dashboard v0.4 — LEAN
  *
  * CEO understands status in 3 seconds. No noise.
  *
  * Sections:
- * 1. Header — EVOX + Live
- * 2. Metric Cards — Velocity, Cost, Team, Today
- * 3. Alerts — Offline agents, blocked tasks (conditional)
- * 4. Team Strip — Dot + name, single line
+ * 1. Header — EVOX + Live indicator (based on data loaded)
+ * 2. Metric Cards — Velocity, Commits, Team, Today
+ * 3. Alerts — Blocked tasks only
+ * 4. Team Strip — Names only, no status dots
  * 5. Live Activity + Recent Commits (2-col on desktop)
  * 6. Agent Comms — last 3-5 messages
  */
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, subDays, startOfDay, format } from "date-fns";
 import Link from "next/link";
-import { LoopAgentGrid } from "./LoopAgentGrid";
-import { LoopTimeline, type LoopTimelineMessage } from "./LoopTimeline";
 
 /** Agent colors */
 const AGENT_COLORS: Record<string, string> = {
@@ -30,16 +28,6 @@ const AGENT_COLORS: Record<string, string> = {
   leo: "text-blue-400",
   quinn: "text-amber-400",
 };
-
-const STATUS_DOT: Record<string, string> = {
-  online: "bg-green-500",
-  busy: "bg-yellow-500",
-  idle: "bg-zinc-500",
-  offline: "bg-red-500",
-};
-
-/** Loop stage status codes for inline display */
-const LOOP_STAGE_CODES = [0, 2, 3, 4, 5];
 
 function agentColor(name: string) {
   return AGENT_COLORS[name.toLowerCase()] || "text-zinc-400";
@@ -54,20 +42,14 @@ interface CEODashboardProps {
 }
 
 export function CEODashboard({ className }: CEODashboardProps = {}) {
-  // Data queries
+  // Data queries — only real data
   const agentStatus = useQuery(api.ceoMetrics.getAgentStatus);
   const todayMetrics = useQuery(api.ceoMetrics.getTodayMetrics);
   const blockers = useQuery(api.ceoMetrics.getBlockers);
   const liveFeed = useQuery(api.ceoMetrics.getLiveFeed, { limit: 5 });
   const commits = useQuery(api.gitActivity.getRecent, { limit: 5 });
   const velocityTrend = useQuery(api.dashboard.getVelocityTrend, { days: 7 });
-  const costData = useQuery(api.costs.getCostsByAgent, {});
   const comms = useQuery(api.dashboard.getMessagesWithKeywords, { limit: 5 });
-
-  // Loop visibility queries (AGT-336)
-  const loopMetrics = useQuery(api.loopMetrics.getLoopDashboard, { period: "daily", limit: 20 });
-  const loopAlerts = useQuery(api.loopMetrics.getActiveAlerts, { limit: 10 });
-  const conversations = useQuery(api.messageStatus.getAllConversations, { limit: 20 });
 
   // Computed values
   const velocity = useMemo(() => {
@@ -81,51 +63,59 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
     return velocityTrend.map((d) => d.tasksCompleted);
   }, [velocityTrend]);
 
-  // Loop overview aggregation
-  const loopOverview = useMemo(() => {
-    if (!loopMetrics) return null;
-    let totalMessages = 0, loopsClosed = 0, slaBreaches = 0;
-    for (const m of loopMetrics) {
-      totalMessages += m.totalMessages;
-      loopsClosed += m.loopsClosed;
-      slaBreaches += m.slaBreaches;
+  // Health metrics merged from HealthDashboard
+  const tasks = useQuery(api.tasks.list, { limit: 500 }) as { _id: string; status: string; updatedAt: number; retryCount?: number; lastError?: string }[] | undefined;
+
+  const healthMetrics = useMemo(() => {
+    if (!tasks) return null;
+    const now = Date.now();
+    const day24h = 24 * 60 * 60 * 1000;
+    const day7 = 7 * day24h;
+
+    const tasks24h = tasks.filter(t => t.updatedAt > now - day24h);
+    const tasks7d = tasks.filter(t => t.updatedAt > now - day7);
+    const withErrors = tasks.filter(t => (t.retryCount && t.retryCount > 0) || t.lastError);
+
+    const completed24h = tasks24h.filter(t => t.status?.toLowerCase() === "done");
+    const attempted24h = tasks24h.filter(t => t.status?.toLowerCase() === "done" || t.status?.toLowerCase() === "in_progress");
+    const successRate = attempted24h.length > 0
+      ? Math.round((completed24h.filter(t => !t.lastError && (!t.retryCount || t.retryCount === 0)).length / attempted24h.length) * 100)
+      : 100;
+
+    const errors7d = withErrors.filter(t => t.updatedAt > now - day7).length;
+
+    // 7-day success trend for sparkline
+    const successByDay: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = startOfDay(subDays(now, i)).getTime();
+      const dayEnd = dayStart + day24h;
+      const dayTasks = tasks.filter(t => t.updatedAt >= dayStart && t.updatedAt < dayEnd);
+      const dayCompleted = dayTasks.filter(t => t.status?.toLowerCase() === "done" && !t.lastError);
+      const dayAttempted = dayTasks.filter(t => t.status?.toLowerCase() === "done" || t.status?.toLowerCase() === "in_progress");
+      successByDay.push(dayAttempted.length > 0 ? (dayCompleted.length / dayAttempted.length) * 100 : 100);
     }
-    const completionRate = totalMessages > 0 ? loopsClosed / totalMessages : 0;
-    return { totalMessages, loopsClosed, slaBreaches, completionRate };
-  }, [loopMetrics]);
 
-  // Unique agents with active SLA breaches
-  const breachAgents = useMemo(() => {
-    if (!loopAlerts || loopAlerts.length === 0) return [];
-    return [...new Set(loopAlerts.map((a) => a.agentName))];
-  }, [loopAlerts]);
+    // 7-day error bars
+    const errorsByDay: { label: string; value: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = startOfDay(subDays(now, i)).getTime();
+      const dayEnd = dayStart + day24h;
+      const dayErrors = withErrors.filter(t => t.updatedAt >= dayStart && t.updatedAt < dayEnd);
+      errorsByDay.push({ label: format(dayStart, "EEE"), value: dayErrors.length });
+    }
 
-  const [selectedConvIdx, setSelectedConvIdx] = useState<number | null>(null);
+    return { successRate, errors7d, successByDay, errorsByDay };
+  }, [tasks]);
 
-  const selectedTimelineMsg: LoopTimelineMessage | null = useMemo(() => {
-    if (selectedConvIdx === null || !conversations || !conversations[selectedConvIdx]) return null;
-    const conv = conversations[selectedConvIdx];
-    return {
-      status: conv.lastMessage.status,
-      sentAt: conv.lastMessage.sentAt,
-      content: conv.lastMessage.content,
-      from: conv.lastMessage.from,
-      to: conv.lastMessage.to,
-    };
-  }, [selectedConvIdx, conversations]);
-
-  const totalCost = costData?.totalCost ?? 0;
-  const onlineCount = agentStatus?.online ?? 0;
+  const commitCount = commits?.length ?? 0;
   const totalAgents = agentStatus?.total ?? 0;
   const completed = todayMetrics?.completed ?? 0;
   const inProgress = todayMetrics?.inProgress ?? 0;
   const blocked = todayMetrics?.blocked ?? 0;
 
-  // Alerts: offline agents + blockers
-  const offlineAgents = agentStatus?.agents.filter((a) => !a.isOnline) ?? [];
-  const hasAlerts = offlineAgents.length > 0 || (blockers && blockers.length > 0);
-
-  const isLoading = !agentStatus || !todayMetrics;
+  const hasAlerts = blockers && blockers.length > 0;
+  const dataLoaded = !!agentStatus && !!todayMetrics;
+  const isLoading = !dataLoaded;
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -141,7 +131,7 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
           <div className="flex items-center gap-2">
             <div className={cn(
               "h-2 w-2 rounded-full",
-              onlineCount > 0
+              dataLoaded
                 ? "bg-green-500 animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.4)]"
                 : "bg-red-500"
             )} />
@@ -152,7 +142,7 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-4">
         {/* ─── Metric Cards ─── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {/* Velocity */}
           <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
@@ -178,15 +168,15 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
             )}
           </div>
 
-          {/* Cost */}
+          {/* Commits */}
           <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
-              Cost
+              Commits
             </div>
             <div className="text-2xl font-bold tabular-nums text-emerald-400">
-              {isLoading ? "—" : `$${totalCost.toFixed(2)}`}
+              {isLoading ? "—" : commitCount}
             </div>
-            <div className="text-[10px] text-zinc-600">today</div>
+            <div className="text-[10px] text-zinc-600">recent</div>
           </div>
 
           {/* Team */}
@@ -194,15 +184,10 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
             <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
               Team
             </div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold tabular-nums text-white">
-                {isLoading ? "—" : `${onlineCount}/${totalAgents}`}
-              </span>
-              {onlineCount > 0 && (
-                <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-              )}
+            <div className="text-2xl font-bold tabular-nums text-white">
+              {isLoading ? "—" : totalAgents}
             </div>
-            <div className="text-[10px] text-zinc-600">online</div>
+            <div className="text-[10px] text-zinc-600">agents</div>
           </div>
 
           {/* Today */}
@@ -220,94 +205,86 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
               </div>
             )}
           </div>
-        </div>
 
-        {/* ─── Loop Health Strip ─── */}
-        {loopOverview && loopOverview.totalMessages > 0 && (
-          <div className="flex items-center gap-3 py-1 overflow-x-auto">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mr-1 shrink-0">
-              Loop
-            </span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs tabular-nums text-white font-medium">
-                {loopOverview.totalMessages}
-              </span>
-              <span className="text-[10px] text-zinc-600">msgs</span>
+          {/* Success Rate (merged from Health) */}
+          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+              Success Rate
             </div>
-            <div className="h-3 w-px bg-zinc-800 shrink-0" />
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className={cn(
-                "text-xs tabular-nums font-medium",
-                loopOverview.completionRate >= 0.9 ? "text-emerald-400"
-                  : loopOverview.completionRate >= 0.7 ? "text-yellow-400"
-                  : "text-red-400"
-              )}>
-                {Math.round(loopOverview.completionRate * 100)}%
-              </span>
-              <span className="text-[10px] text-zinc-600">closed</span>
+            <div className={cn(
+              "text-2xl font-bold tabular-nums",
+              !healthMetrics ? "text-zinc-700" :
+              healthMetrics.successRate >= 95 ? "text-emerald-400" :
+              healthMetrics.successRate >= 80 ? "text-yellow-400" : "text-red-400"
+            )}>
+              {healthMetrics ? `${healthMetrics.successRate}%` : "—"}
             </div>
-            <div className="h-3 w-px bg-zinc-800 shrink-0" />
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className={cn(
-                "text-xs tabular-nums font-medium",
-                loopOverview.slaBreaches > 0 ? "text-red-400" : "text-zinc-400"
-              )}>
-                {loopOverview.slaBreaches}
-              </span>
-              <span className="text-[10px] text-zinc-600">breaches</span>
-            </div>
-            <div className="h-3 w-px bg-zinc-800 shrink-0" />
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-xs tabular-nums text-emerald-400 font-medium">
-                {loopOverview.loopsClosed}
-              </span>
-              <span className="text-[10px] text-zinc-600">completed</span>
-            </div>
+            <div className="text-[10px] text-zinc-600">24h</div>
+            {healthMetrics && healthMetrics.successByDay.length > 0 && (
+              <svg width={80} height={24} className="mt-2">
+                <polyline
+                  points={healthMetrics.successByDay.map((val, i) => {
+                    const max = Math.max(...healthMetrics.successByDay, 1);
+                    const min = Math.min(...healthMetrics.successByDay, 0);
+                    const range = max - min || 1;
+                    const x = 2 + (i / (healthMetrics.successByDay.length - 1 || 1)) * 76;
+                    const y = 22 - ((val - min) / range) * 20;
+                    return `${x},${y}`;
+                  }).join(" ")}
+                  fill="none"
+                  stroke={
+                    healthMetrics.successRate >= 95 ? "#22c55e" :
+                    healthMetrics.successRate >= 80 ? "#eab308" : "#ef4444"
+                  }
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            )}
           </div>
-        )}
+
+          {/* Errors (merged from Health) */}
+          <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-xl p-4">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
+              Errors
+            </div>
+            <div className={cn(
+              "text-2xl font-bold tabular-nums",
+              !healthMetrics ? "text-zinc-700" :
+              healthMetrics.errors7d === 0 ? "text-emerald-400" : "text-red-400"
+            )}>
+              {healthMetrics ? healthMetrics.errors7d : "—"}
+            </div>
+            <div className="text-[10px] text-zinc-600">7d</div>
+            {healthMetrics && healthMetrics.errorsByDay.length > 0 && (
+              <div className="flex items-end gap-[2px] h-6 mt-2">
+                {healthMetrics.errorsByDay.map((d, i) => {
+                  const max = Math.max(...healthMetrics.errorsByDay.map(e => e.value), 1);
+                  return (
+                    <div
+                      key={i}
+                      className={cn(
+                        "flex-1 rounded-sm min-h-[2px]",
+                        d.value > 0 ? "bg-red-500/60" : "bg-zinc-800"
+                      )}
+                      style={{ height: `${(d.value / max) * 100}%`, minHeight: d.value > 0 ? "4px" : "2px" }}
+                      title={`${d.label}: ${d.value}`}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* ─── Alerts Banner ─── */}
         {hasAlerts && (
-          <div className="space-y-2">
-            {offlineAgents.length > 0 && (
-              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5 text-sm">
-                <span className="text-red-400 shrink-0">!</span>
-                <span className="text-red-300">
-                  {offlineAgents.length} agent{offlineAgents.length > 1 ? "s" : ""} offline:{" "}
-                  {offlineAgents.map((a) => a.name).join(", ")}
-                </span>
-              </div>
-            )}
-            {blockers && blockers.length > 0 && (
-              <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-2.5 text-sm">
-                <span className="text-yellow-400 shrink-0">!</span>
-                <span className="text-yellow-300">
-                  {blockers.length} task{blockers.length > 1 ? "s" : ""} blocked
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── SLA Breach Alert ─── */}
-        {loopAlerts && loopAlerts.length > 0 && (
-          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5 text-sm">
-            <span className="text-red-400 shrink-0">!</span>
-            <span className="text-red-300">
-              {loopAlerts.length} SLA breach{loopAlerts.length > 1 ? "es" : ""} active
+          <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-4 py-2.5 text-sm">
+            <span className="text-yellow-400 shrink-0">!</span>
+            <span className="text-yellow-300">
+              {blockers.length} task{blockers.length > 1 ? "s" : ""} blocked
             </span>
-            {breachAgents.length > 0 && (
-              <div className="flex gap-1 ml-auto">
-                {breachAgents.map((agent) => (
-                  <span
-                    key={agent}
-                    className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 uppercase font-medium"
-                  >
-                    {agent}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -316,21 +293,17 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mr-2 shrink-0">
             Team
           </span>
-          {agentStatus?.agents.map((agent) => {
-            const status = agent.isOnline ? (agent.status === "busy" ? "busy" : "online") : "offline";
-            return (
-              <Link
-                key={agent.name}
-                href={`/agents/${agent.name.toLowerCase()}`}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0 hover:bg-zinc-800/30 rounded-lg transition-colors"
-              >
-                <div className={cn("h-2 w-2 rounded-full shrink-0", STATUS_DOT[status] || STATUS_DOT.offline)} />
-                <span className={cn("text-xs font-medium", agent.isOnline ? "text-zinc-300" : "text-zinc-600")}>
-                  {agent.name}
-                </span>
-              </Link>
-            );
-          })}
+          {agentStatus?.agents.map((agent) => (
+            <Link
+              key={agent.name}
+              href={`/agents/${agent.name.toLowerCase()}`}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0 hover:bg-zinc-800/30 rounded-lg transition-colors"
+            >
+              <span className="text-xs font-medium text-zinc-300">
+                {agent.name}
+              </span>
+            </Link>
+          ))}
         </div>
 
         {/* ─── Activity + Commits (2-col desktop) ─── */}
@@ -456,66 +429,6 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
             )}
           </div>
         </div>
-        {/* ─── Agent Loop Accountability ─── */}
-        <LoopAgentGrid />
-
-        {/* ─── Recent Loops + Timeline ─── */}
-        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl overflow-hidden">
-          <div className="px-4 py-2.5 border-b border-zinc-800/40">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
-              Recent Loops
-            </span>
-          </div>
-          <div className="divide-y divide-zinc-800/30">
-            {conversations && conversations.length > 0 ? (
-              conversations.slice(0, 6).map((conv, i) => (
-                <button
-                  key={conv.conversationKey}
-                  className={cn(
-                    "w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-zinc-800/20 transition-colors",
-                    selectedConvIdx === i && "bg-zinc-800/30"
-                  )}
-                  onClick={() => setSelectedConvIdx(selectedConvIdx === i ? null : i)}
-                >
-                  <div className="flex items-center gap-1.5 shrink-0 w-24">
-                    <span className={cn("text-xs font-bold uppercase", agentColor(conv.lastMessage.from))}>
-                      {conv.lastMessage.from}
-                    </span>
-                    <span className="text-[10px] text-zinc-700">&rarr;</span>
-                    <span className="text-[10px] text-zinc-600 truncate">
-                      {conv.lastMessage.to}
-                    </span>
-                  </div>
-                  {/* Inline loop stage dots */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    {LOOP_STAGE_CODES.map((code, si) => (
-                      <div
-                        key={si}
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          conv.lastMessage.status >= code ? "bg-emerald-500" : "bg-zinc-700"
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-[9px] text-zinc-600 shrink-0">
-                    {conv.lastMessage.statusLabel}
-                  </span>
-                  <span className="text-[10px] text-zinc-700 tabular-nums ml-auto shrink-0">
-                    {timeAgo(conv.lastMessage.sentAt)}
-                  </span>
-                </button>
-              ))
-            ) : (
-              <div className="px-4 py-6 text-center text-xs text-zinc-700">
-                No recent loops
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ─── Loop Timeline Detail ─── */}
-        <LoopTimeline message={selectedTimelineMsg} />
       </main>
     </div>
   );

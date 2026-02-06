@@ -96,7 +96,6 @@ interface AgentLiveCardProps {
     status: string;
     statusReason?: string;
     currentTask?: string;
-    lastHeartbeat?: number;
   };
 }
 
@@ -162,12 +161,6 @@ function AgentLiveCard({ agent }: AgentLiveCardProps) {
         </div>
       )}
 
-      {/* Last seen for offline */}
-      {!isActive && agent.lastHeartbeat && (
-        <div className="mt-2 text-xs text-zinc-600">
-          Last seen {formatDistanceToNow(agent.lastHeartbeat, { addSuffix: true })}
-        </div>
-      )}
     </div>
   );
 }

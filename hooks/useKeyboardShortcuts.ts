@@ -44,15 +44,6 @@ export function useKeyboardShortcuts({
     "meta+2",
     (e) => {
       e.preventDefault();
-      onViewTabChange?.("health");
-    },
-    { enableOnFormTags: false }
-  );
-
-  useHotkeys(
-    "meta+3",
-    (e) => {
-      e.preventDefault();
       onViewTabChange?.("comms");
     },
     { enableOnFormTags: false }

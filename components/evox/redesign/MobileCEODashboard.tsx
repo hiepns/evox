@@ -30,7 +30,6 @@ type AgentDoc = {
   name: string;
   avatar: string;
   status: string;
-  lastHeartbeat?: number;
   lastSeen?: number;
 };
 
@@ -73,13 +72,13 @@ export function MobileCEODashboard({ className }: MobileCEODashboardProps) {
     }
 
     const activeAgents = agents.filter(a => {
-      const lastSeen = a.lastSeen || a.lastHeartbeat || 0;
+      const lastSeen = a.lastSeen || 0;
       const status = a.status?.toLowerCase() || "offline";
       return (status === "online" || status === "busy") && (now - lastSeen < 5 * 60 * 1000);
     });
 
     const offlineAgents = agents.filter(a => {
-      const lastSeen = a.lastSeen || a.lastHeartbeat || 0;
+      const lastSeen = a.lastSeen || 0;
       const status = a.status?.toLowerCase() || "offline";
       return status === "offline" || (now - lastSeen > 15 * 60 * 1000);
     });
@@ -121,7 +120,7 @@ export function MobileCEODashboard({ className }: MobileCEODashboardProps) {
 
     // Offline agents = critical
     agents.forEach(agent => {
-      const lastSeen = agent.lastSeen || agent.lastHeartbeat || 0;
+      const lastSeen = agent.lastSeen || 0;
       const status = agent.status?.toLowerCase() || "offline";
       const minutesAgo = Math.floor((now - lastSeen) / 60000);
 
@@ -206,7 +205,7 @@ export function MobileCEODashboard({ className }: MobileCEODashboardProps) {
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {agents.map((agent) => {
             const status = agent.status?.toLowerCase() || "offline";
-            const lastSeen = agent.lastSeen || agent.lastHeartbeat || 0;
+            const lastSeen = agent.lastSeen || 0;
             const isActive = (status === "online" || status === "busy") && (now - lastSeen < 5 * 60 * 1000);
 
             return (

@@ -48,7 +48,7 @@ export { BudgetAlert } from "./BudgetAlert";
 // ============================================
 // PANELS & WIDGETS
 // ============================================
-export { HeartbeatPanel } from "./HeartbeatPanel";
+
 export { WorkingMemoryPanel } from "./WorkingMemoryPanel";
 export { SoulPreview } from "./SoulPreview";
 export { MemoryTab } from "./MemoryTab";

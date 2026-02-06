@@ -37,7 +37,7 @@ export function DashboardV2() {
     name: a.name,
     computedStatus: a.computedStatus || "offline",
     currentTask: a.currentTask,
-    lastSeen: a.lastSeen || a.lastHeartbeat,
+    lastSeen: a.lastSeen,
   }));
 
   const activities = (status.recentActivity || []).map((a: any, i: number) => ({

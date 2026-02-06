@@ -37,14 +37,13 @@ const roleLabels: Record<string, string> = {
   qa: "QA",
 };
 
-type TabId = "overview" | "tasks" | "activity" | "memory" | "heartbeat" | "messages";
+type TabId = "overview" | "tasks" | "activity" | "memory" | "messages";
 
 const TABS: { id: TabId; label: string; count?: number }[] = [
   { id: "overview", label: "Overview" },
   { id: "tasks", label: "Tasks" },
   { id: "activity", label: "Activity" },
   { id: "memory", label: "Memory" },
-  { id: "heartbeat", label: "Heartbeat" },
   { id: "messages", label: "Messages" },
 ];
 
@@ -234,16 +233,6 @@ export function AgentProfile({
               {formatDistanceToNow(statusSince, { addSuffix: false })}
             </span>
           )}
-          {full?.lastHeartbeat != null && (() => {
-            const currentNow = new Date().getTime();
-            const ageMs = currentNow - full.lastHeartbeat;
-            const isStale = ageMs >= 5 * 60 * 1000;
-            return isStale ? (
-              <span className="rounded bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold uppercase">
-                ⚠ Stale
-              </span>
-            ) : null;
-          })()}
           {agentSkills?.autonomyLevelName && (
             <span className="rounded bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-500">
               {agentSkills.autonomyLevelName}
@@ -388,37 +377,6 @@ export function AgentProfile({
               </div>
             )}
 
-            {/* Heartbeat Status */}
-            {full?.lastHeartbeat != null && (
-              <div className="rounded border border-zinc-800 bg-zinc-950 p-3">
-                <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">Heartbeat</div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-lg font-semibold text-zinc-50">
-                      {(() => {
-                        const currentNow = new Date().getTime();
-                        const ageMs = currentNow - full.lastHeartbeat;
-                        if (ageMs < 5 * 60 * 1000) return "Healthy";
-                        if (ageMs < 15 * 60 * 1000) return "Stale";
-                        return "Offline";
-                      })()}
-                    </div>
-                    <div className="text-xs text-zinc-500">{formatDistanceToNow(full.lastHeartbeat, { addSuffix: true })}</div>
-                  </div>
-                  <div className={cn(
-                    "h-4 w-4 rounded-full",
-                    (() => {
-                      const currentNow = new Date().getTime();
-                      const ageMs = currentNow - full.lastHeartbeat;
-                      if (ageMs < 5 * 60 * 1000) return "bg-green-500";
-                      if (ageMs < 15 * 60 * 1000) return "bg-yellow-500";
-                      return "bg-gray-500";
-                    })()
-                  )} />
-                </div>
-              </div>
-            )}
-
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Skills</h4>
               <div className="mt-2 flex flex-wrap gap-1.5">
@@ -526,40 +484,6 @@ export function AgentProfile({
           <MemoryTab agentId={agentId} agentName={name} />
         )}
 
-        {activeTab === "heartbeat" && (
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Last heartbeat</h4>
-              <p className="mt-1 text-sm text-zinc-400">
-                {full?.lastHeartbeat != null
-                  ? formatDistanceToNow(full.lastHeartbeat, { addSuffix: true })
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Uptime since last beat</h4>
-              <p className="mt-1 text-sm text-zinc-400">
-                {full?.lastHeartbeat != null
-                  ? formatDistanceToNow(full.lastHeartbeat)
-                  : "—"}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-zinc-500">Status</h4>
-              <p className="mt-1 text-sm text-zinc-400">
-                {full?.lastHeartbeat != null
-                  ? (() => {
-                      const currentNow = new Date().getTime();
-                      const ageMs = currentNow - full.lastHeartbeat;
-                      if (ageMs < 5 * 60 * 1000) return "healthy";
-                      if (ageMs < 15 * 60 * 1000) return "stale";
-                      return "offline";
-                    })()
-                  : "offline"}
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Send message — fixed at bottom, hidden in demo mode (AGT-230) */}

@@ -42,8 +42,8 @@ export default function SyncDashboard() {
             color="green"
           />
           <StatCard
-            label="Stale Agents"
-            value={stats.staleAgents}
+            label="Offline Agents"
+            value={stats.totalAgents - stats.activeAgents}
             color="red"
           />
         </div>
@@ -153,31 +153,16 @@ function AgentRow({
   const statusColor =
     statusColors[agent.status as keyof typeof statusColors] || "bg-zinc-500";
 
-  const timeAgo = getTimeAgo(agent.lastHeartbeat);
-
   return (
-    <div
-      className={`flex items-center justify-between p-3 rounded-lg border ${
-        agent.isStale
-          ? "bg-zinc-800/50 border-zinc-700"
-          : "bg-zinc-800 border-zinc-700"
-      }`}
-    >
+    <div className="flex items-center justify-between p-3 rounded-lg border bg-zinc-800 border-zinc-700">
       <div className="flex items-center gap-3">
         {/* Status Dot */}
-        <div
-          className={`w-3 h-3 rounded-full ${statusColor} ${
-            agent.isStale ? "opacity-30" : ""
-          }`}
-        />
+        <div className={`w-3 h-3 rounded-full ${statusColor}`} />
 
         {/* Agent Info */}
         <div>
           <div className="font-medium text-white">
             {agent.agent.toUpperCase()}
-            {agent.isStale && (
-              <span className="ml-2 text-xs text-red-400">(stale)</span>
-            )}
           </div>
           <div className="text-sm text-zinc-400">
             {agent.currentTask || "Idle"}
@@ -185,17 +170,8 @@ function AgentRow({
         </div>
       </div>
 
-      {/* Last Heartbeat */}
-      <div className="text-sm text-zinc-500">{timeAgo}</div>
+      {/* Status */}
+      <div className="text-sm text-zinc-500 capitalize">{agent.status}</div>
     </div>
   );
-}
-
-function getTimeAgo(timestamp: number): string {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-
-  if (seconds < 60) return `${seconds}s ago`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
 }

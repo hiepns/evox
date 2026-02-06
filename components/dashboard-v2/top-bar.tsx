@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
-import { KillSwitch } from "@/components/evox/KillSwitch";
+
 import { useViewerMode } from "@/contexts/ViewerModeContext";
 
 interface TopBarProps {
@@ -70,7 +70,6 @@ export function TopBar({
             VIEWER MODE
           </span>
         )}
-        <KillSwitch />
         <NotificationBell
           totalUnread={notificationTotalUnread}
           onBellClick={onBellClick}

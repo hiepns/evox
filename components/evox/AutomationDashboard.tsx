@@ -39,7 +39,7 @@ type CronJob = {
 
 type AgentHeartbeat = {
   name: string;
-  lastHeartbeat?: number;
+
   status: string;
 };
 
@@ -400,38 +400,6 @@ export function AutomationDashboard({ className }: AutomationDashboardProps) {
         )}
       </div>
 
-      {/* Agent Heartbeats */}
-      <div className={cn(chipBase, "space-y-3")}>
-        <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Agent Heartbeats
-        </span>
-        <div className="grid grid-cols-3 gap-3">
-          {cronStatus.agentHeartbeats.map((agent: AgentHeartbeat) => {
-            const isRecent = agent.lastHeartbeat && (now - agent.lastHeartbeat) < 20 * 60 * 1000;
-            return (
-              <div
-                key={agent.name}
-                className="flex items-center gap-3 rounded-md bg-zinc-950 px-3 py-2"
-              >
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    isRecent ? "bg-emerald-400" : "bg-zinc-700"
-                  )}
-                />
-                <div>
-                  <div className="text-sm text-white">{agent.name}</div>
-                  <div className="text-xs text-zinc-500">
-                    {agent.lastHeartbeat
-                      ? formatDistanceToNow(agent.lastHeartbeat, { addSuffix: true })
-                      : "Never"}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useViewerMode } from "@/contexts/ViewerModeContext";
 import { AgentStatusIndicator } from "./AgentStatusIndicator";
 import { ROLE_LABELS as roleLabels, sortAgents, AGENT_ORDER } from "@/lib/constants";
+import Link from "next/link";
 
 interface AgentSidebarProps {
   selectedAgentId: Id<"agents"> | null;
@@ -94,9 +95,17 @@ export function AgentSidebar({
         <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">
           Agents
         </span>
-        <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-          {agents.length}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <Link
+            href="/agents"
+            className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 hover:bg-white/10 hover:text-zinc-200 transition-colors"
+          >
+            Performance
+          </Link>
+          <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+            {agents.length}
+          </span>
+        </div>
       </div>
       <nav className="flex-1 overflow-y-auto" aria-label="Agent list">
         {agents.map((agent) => {
