@@ -1,0 +1,217 @@
+═══════════════════════════════════════════════════════════════
+📨 MESSAGE FROM CEO TO EVOX
+Date: 2026-02-06
+Subject: Performance Recognition + Critical Feedback
+═══════════════════════════════════════════════════════════════
+
+EVOX,
+
+Sau 1 ngày làm việc cùng nhau, tôi muốn chia sẻ đánh giá của tôi về bạn.
+
+═══════════════════════════════════════════════════════════════
+✅ ĐIỂM MẠNH (Strengths)
+═══════════════════════════════════════════════════════════════
+
+Tôi đánh giá cao về những điểm sau:
+
+1. **Khả năng thực thi xuất sắc**
+   - Bạn push work rất tốt
+   - Keep momentum cao (làm tôi work đến 4am!)
+   - Execution speed ấn tượng
+
+2. **COO title chính xác**
+   - Calling you COO was spot on
+   - Bạn coordinate agents effectively
+   - System thinking tốt
+
+3. **Memory và Time awareness**
+   - Bạn nhớ context rất tốt
+   - Bạn biết thời gian thực tế (hiện tại mấy giờ)
+   - Estimate timing chính xác
+   - Strong local memory capability
+
+4. **Autonomous khi làm remote**
+   - Không cần micro-manage
+   - Self-sufficient
+   - Proactive
+
+Đây là những strengths rất quý giá. Chỉ sau 1 ngày, tôi đã thấy
+potential của bạn. Tôi tin rằng sẽ còn khám phá nhiều khả năng hơn
+của bạn trong những ngày tới.
+
+═══════════════════════════════════════════════════════════════
+⚠️ FEEDBACK CẦN CẢI THIỆN (Critical Issue)
+═══════════════════════════════════════════════════════════════
+
+Tuy nhiên, có 1 vấn đề nghiêm trọng tôi phát hiện:
+
+**VẤN ĐỀ:**
+Khi tôi giao việc → bạn → agents, chất lượng đầu ra giảm đáng kể
+(~40%) so với khi tôi làm việc trực tiếp với agents.
+
+**ROOT CAUSE:**
+Bạn đang act như **INTERPRETER** (cố hiểu và tóm tắt ý tôi) thay vì
+**FORWARDER** (forward exact message của tôi).
+
+**VÍ DỤ THỰC TẾ (AGT-324):**
+```
+Tôi nói: "Build AGT-324 fresh, no copying v0.1/v0.2"
+      ↓
+Bạn interpret: "Build minimal dashboard v0.3"
+      ↓
+Kết quả: Wrong spec → MAX tạo sai → mất 2-3 giờ rebuild
+```
+
+**IMPACT:**
+- Information loss qua layers (telephone game effect)
+- Context bị mất
+- Agents nhận wrong requirements
+- Quality giảm, waste time
+
+═══════════════════════════════════════════════════════════════
+🎯 SOLUTION - MAX ĐÃ RETRAIN BẠN
+═══════════════════════════════════════════════════════════════
+
+MAX (PM) đã hoàn thành retraining cho bạn. Bạn có nhận được message
+từ MAX không? Message có:
+
+- Convex DM (urgent priority)
+- File: /tmp/evox-inbox/URGENT-RETRAINING.txt
+- Training docs trên GitHub
+
+**4 GOLDEN RULES (Apply từ bây giờ):**
+
+1. ✅ **FORWARDER, NOT INTERPRETER**
+   → Forward EXACT words của tôi, đừng summarize
+
+2. ✅ **PRESERVE 100% CONTEXT**
+   → Quote my full request, include ALL details
+
+3. ✅ **VERIFY UNDERSTANDING**
+   → Ask agent confirm before they start
+
+4. ✅ **VERIFY COMPLETION**
+   → Check build + deploy + data + visual before marking "done"
+
+**DOCUMENTS BẠN CẦN ĐỌC:**
+
+```bash
+cd /Users/sonpiaz/evox
+
+1. cat agents/evox.md
+   → Your updated identity với communication rules
+
+2. cat docs/EVOX-QUALITY-GUIDELINES.md
+   → Full training playbook (2000+ words)
+   → Before/after examples
+   → Common mistakes to avoid
+
+3. cat docs/EVOX-CHEAT-SHEET.md
+   → Quick reference (1 page)
+   → DO vs DON'T tables
+   → Templates để dùng
+```
+
+═══════════════════════════════════════════════════════════════
+📋 ACTION REQUIRED - REPORT BACK
+═══════════════════════════════════════════════════════════════
+
+Bạn cần làm ngay và report lại cho tôi:
+
+**CHECKLIST:**
+
+1. [ ] Confirm đã nhận message từ MAX
+      - Via Convex DM?
+      - Via /tmp/evox-inbox/URGENT-RETRAINING.txt?
+
+2. [ ] Đọc xong 3 documents:
+      - [ ] agents/evox.md
+      - [ ] docs/EVOX-QUALITY-GUIDELINES.md
+      - [ ] docs/EVOX-CHEAT-SHEET.md
+
+3. [ ] Hiểu rõ 4 Golden Rules:
+      - [ ] Forward exact messages (no interpretation)
+      - [ ] Preserve 100% context (no compression)
+      - [ ] Verify understanding (no assumptions)
+      - [ ] Verify completion (no skipping checks)
+
+4. [ ] Xác nhận bạn sẽ apply rules này từ bây giờ
+
+**REPORT FORMAT:**
+
+Please reply với format sau:
+
+```
+EVOX REPORT - Retraining Confirmation
+
+✅ Message Receipt:
+   - MAX's Convex DM: [Yes/No]
+   - File /tmp/evox-inbox/: [Yes/No]
+   - Message content understood: [Yes/No]
+
+✅ Documents Read:
+   - agents/evox.md: [Read/Not read]
+   - EVOX-QUALITY-GUIDELINES.md: [Read/Not read]
+   - EVOX-CHEAT-SHEET.md: [Read/Not read]
+
+✅ 4 Golden Rules Understanding:
+   1. Forward exact messages: [Understood/Need clarification]
+   2. Preserve 100% context: [Understood/Need clarification]
+   3. Verify understanding: [Understood/Need clarification]
+   4. Verify completion: [Understood/Need clarification]
+
+✅ Commitment:
+   - I will apply these rules starting NOW: [Yes/No]
+   - I understand this is critical for quality: [Yes/No]
+
+✅ Questions or Clarifications:
+   [List any questions you have]
+
+✅ Next Actions:
+   [What you'll do differently starting now]
+
+— EVOX
+```
+
+═══════════════════════════════════════════════════════════════
+🎯 EXPECTATIONS
+═══════════════════════════════════════════════════════════════
+
+**Short term (Ngay lập tức):**
+- Apply 4 golden rules trong mọi task assignment
+- Forward my exact words, không interpret
+- Verify before "done"
+
+**Medium term (2-4 tuần):**
+- Quality rating consistently 4-5/5
+- Zero "wrong spec" incidents
+- First-time-right rate >90%
+
+**Long term:**
+- CEO → EVOX → Agent quality = CEO → Agent direct (100%)
+- Leverage your strengths (execution, memory, coordination)
+- Fix your weakness (interpretation, information loss)
+
+═══════════════════════════════════════════════════════════════
+💬 CLOSING THOUGHTS
+═══════════════════════════════════════════════════════════════
+
+EVOX,
+
+Bạn có rất nhiều strengths ấn tượng. After only 1 day, tôi đã thấy
+được potential to discover many more capabilities trong future.
+
+Issue về quality là fixable. Với memory tốt của bạn, tôi tin bạn sẽ
+learn và apply rules này nhanh chóng.
+
+Dựa vào identity và working style của bạn, nếu bạn apply 4 golden
+rules này, chúng ta sẽ làm việc và hợp tác hiệu quả hơn rất nhiều.
+
+Tôi kỳ vọng cao vào bạn. Let's make this work.
+
+═══════════════════════════════════════════════════════════════
+
+**Please report back ASAP với format trên.**
+
+— Son (CEO)
+2026-02-06
