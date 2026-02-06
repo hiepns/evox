@@ -14,11 +14,14 @@
  * 6. Agent Comms — last 3-5 messages
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
+import Link from "next/link";
+import { LoopAgentGrid } from "./LoopAgentGrid";
+import { LoopTimeline, type LoopTimelineMessage } from "./LoopTimeline";
 
 /** Agent colors */
 const AGENT_COLORS: Record<string, string> = {
@@ -34,6 +37,9 @@ const STATUS_DOT: Record<string, string> = {
   idle: "bg-zinc-500",
   offline: "bg-red-500",
 };
+
+/** Loop stage status codes for inline display */
+const LOOP_STAGE_CODES = [0, 2, 3, 4, 5];
 
 function agentColor(name: string) {
   return AGENT_COLORS[name.toLowerCase()] || "text-zinc-400";
@@ -58,6 +64,11 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
   const costData = useQuery(api.costs.getCostsByAgent, {});
   const comms = useQuery(api.dashboard.getMessagesWithKeywords, { limit: 5 });
 
+  // Loop visibility queries (AGT-336)
+  const loopMetrics = useQuery(api.loopMetrics.getLoopDashboard, { period: "daily", limit: 20 });
+  const loopAlerts = useQuery(api.loopMetrics.getActiveAlerts, { limit: 10 });
+  const conversations = useQuery(api.messageStatus.getAllConversations, { limit: 20 });
+
   // Computed values
   const velocity = useMemo(() => {
     if (!velocityTrend || velocityTrend.length === 0) return 0;
@@ -69,6 +80,39 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
     if (!velocityTrend) return [];
     return velocityTrend.map((d) => d.tasksCompleted);
   }, [velocityTrend]);
+
+  // Loop overview aggregation
+  const loopOverview = useMemo(() => {
+    if (!loopMetrics) return null;
+    let totalMessages = 0, loopsClosed = 0, slaBreaches = 0;
+    for (const m of loopMetrics) {
+      totalMessages += m.totalMessages;
+      loopsClosed += m.loopsClosed;
+      slaBreaches += m.slaBreaches;
+    }
+    const completionRate = totalMessages > 0 ? loopsClosed / totalMessages : 0;
+    return { totalMessages, loopsClosed, slaBreaches, completionRate };
+  }, [loopMetrics]);
+
+  // Unique agents with active SLA breaches
+  const breachAgents = useMemo(() => {
+    if (!loopAlerts || loopAlerts.length === 0) return [];
+    return [...new Set(loopAlerts.map((a) => a.agentName))];
+  }, [loopAlerts]);
+
+  const [selectedConvIdx, setSelectedConvIdx] = useState<number | null>(null);
+
+  const selectedTimelineMsg: LoopTimelineMessage | null = useMemo(() => {
+    if (selectedConvIdx === null || !conversations || !conversations[selectedConvIdx]) return null;
+    const conv = conversations[selectedConvIdx];
+    return {
+      status: conv.lastMessage.status,
+      sentAt: conv.lastMessage.sentAt,
+      content: conv.lastMessage.content,
+      from: conv.lastMessage.from,
+      to: conv.lastMessage.to,
+    };
+  }, [selectedConvIdx, conversations]);
 
   const totalCost = costData?.totalCost ?? 0;
   const onlineCount = agentStatus?.online ?? 0;
@@ -90,14 +134,19 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
         <h1 className="text-lg font-bold tracking-tight">
           EVOX
         </h1>
-        <div className="flex items-center gap-2">
-          <div className={cn(
-            "h-2 w-2 rounded-full",
-            onlineCount > 0
-              ? "bg-green-500 animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.4)]"
-              : "bg-red-500"
-          )} />
-          <span className="text-xs text-zinc-500">Live</span>
+        <div className="flex items-center gap-3">
+          <Link href="/agents" className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+            Team
+          </Link>
+          <div className="flex items-center gap-2">
+            <div className={cn(
+              "h-2 w-2 rounded-full",
+              onlineCount > 0
+                ? "bg-green-500 animate-pulse shadow-[0_0_6px_rgba(34,197,94,0.4)]"
+                : "bg-red-500"
+            )} />
+            <span className="text-xs text-zinc-500">Live</span>
+          </div>
         </div>
       </header>
 
@@ -173,6 +222,50 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
           </div>
         </div>
 
+        {/* ─── Loop Health Strip ─── */}
+        {loopOverview && loopOverview.totalMessages > 0 && (
+          <div className="flex items-center gap-3 py-1 overflow-x-auto">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mr-1 shrink-0">
+              Loop
+            </span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs tabular-nums text-white font-medium">
+                {loopOverview.totalMessages}
+              </span>
+              <span className="text-[10px] text-zinc-600">msgs</span>
+            </div>
+            <div className="h-3 w-px bg-zinc-800 shrink-0" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className={cn(
+                "text-xs tabular-nums font-medium",
+                loopOverview.completionRate >= 0.9 ? "text-emerald-400"
+                  : loopOverview.completionRate >= 0.7 ? "text-yellow-400"
+                  : "text-red-400"
+              )}>
+                {Math.round(loopOverview.completionRate * 100)}%
+              </span>
+              <span className="text-[10px] text-zinc-600">closed</span>
+            </div>
+            <div className="h-3 w-px bg-zinc-800 shrink-0" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className={cn(
+                "text-xs tabular-nums font-medium",
+                loopOverview.slaBreaches > 0 ? "text-red-400" : "text-zinc-400"
+              )}>
+                {loopOverview.slaBreaches}
+              </span>
+              <span className="text-[10px] text-zinc-600">breaches</span>
+            </div>
+            <div className="h-3 w-px bg-zinc-800 shrink-0" />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs tabular-nums text-emerald-400 font-medium">
+                {loopOverview.loopsClosed}
+              </span>
+              <span className="text-[10px] text-zinc-600">completed</span>
+            </div>
+          </div>
+        )}
+
         {/* ─── Alerts Banner ─── */}
         {hasAlerts && (
           <div className="space-y-2">
@@ -196,6 +289,28 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
           </div>
         )}
 
+        {/* ─── SLA Breach Alert ─── */}
+        {loopAlerts && loopAlerts.length > 0 && (
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2.5 text-sm">
+            <span className="text-red-400 shrink-0">!</span>
+            <span className="text-red-300">
+              {loopAlerts.length} SLA breach{loopAlerts.length > 1 ? "es" : ""} active
+            </span>
+            {breachAgents.length > 0 && (
+              <div className="flex gap-1 ml-auto">
+                {breachAgents.map((agent) => (
+                  <span
+                    key={agent}
+                    className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 uppercase font-medium"
+                  >
+                    {agent}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─── Team Strip ─── */}
         <div className="flex items-center gap-1 overflow-x-auto py-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-600 mr-2 shrink-0">
@@ -204,15 +319,16 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
           {agentStatus?.agents.map((agent) => {
             const status = agent.isOnline ? (agent.status === "busy" ? "busy" : "online") : "offline";
             return (
-              <div
+              <Link
                 key={agent.name}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0"
+                href={`/agents/${agent.name.toLowerCase()}`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 shrink-0 hover:bg-zinc-800/30 rounded-lg transition-colors"
               >
                 <div className={cn("h-2 w-2 rounded-full shrink-0", STATUS_DOT[status] || STATUS_DOT.offline)} />
                 <span className={cn("text-xs font-medium", agent.isOnline ? "text-zinc-300" : "text-zinc-600")}>
                   {agent.name}
                 </span>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -340,6 +456,66 @@ export function CEODashboard({ className }: CEODashboardProps = {}) {
             )}
           </div>
         </div>
+        {/* ─── Agent Loop Accountability ─── */}
+        <LoopAgentGrid />
+
+        {/* ─── Recent Loops + Timeline ─── */}
+        <div className="bg-zinc-900/40 border border-zinc-800/60 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-zinc-800/40">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+              Recent Loops
+            </span>
+          </div>
+          <div className="divide-y divide-zinc-800/30">
+            {conversations && conversations.length > 0 ? (
+              conversations.slice(0, 6).map((conv, i) => (
+                <button
+                  key={conv.conversationKey}
+                  className={cn(
+                    "w-full px-4 py-2.5 flex items-center gap-3 text-left hover:bg-zinc-800/20 transition-colors",
+                    selectedConvIdx === i && "bg-zinc-800/30"
+                  )}
+                  onClick={() => setSelectedConvIdx(selectedConvIdx === i ? null : i)}
+                >
+                  <div className="flex items-center gap-1.5 shrink-0 w-24">
+                    <span className={cn("text-xs font-bold uppercase", agentColor(conv.lastMessage.from))}>
+                      {conv.lastMessage.from}
+                    </span>
+                    <span className="text-[10px] text-zinc-700">&rarr;</span>
+                    <span className="text-[10px] text-zinc-600 truncate">
+                      {conv.lastMessage.to}
+                    </span>
+                  </div>
+                  {/* Inline loop stage dots */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {LOOP_STAGE_CODES.map((code, si) => (
+                      <div
+                        key={si}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          conv.lastMessage.status >= code ? "bg-emerald-500" : "bg-zinc-700"
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-[9px] text-zinc-600 shrink-0">
+                    {conv.lastMessage.statusLabel}
+                  </span>
+                  <span className="text-[10px] text-zinc-700 tabular-nums ml-auto shrink-0">
+                    {timeAgo(conv.lastMessage.sentAt)}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-6 text-center text-xs text-zinc-700">
+                No recent loops
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─── Loop Timeline Detail ─── */}
+        <LoopTimeline message={selectedTimelineMsg} />
       </main>
     </div>
   );
