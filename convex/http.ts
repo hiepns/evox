@@ -4,6 +4,7 @@ import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { withAuth } from "./lib/httpAuth";
+import { VALID_AGENTS } from "./agentRegistry";
 
 const http = httpRouter();
 
@@ -128,7 +129,8 @@ http.route({
   handler: httpAction(async (ctx, request) => { // Webhook: own auth
     try {
       const body = await request.json();
-      const AGENTS = ["SAM", "LEO"];
+      // Only dispatch to sam and leo (uppercase for Linear webhook matching)
+      const AGENTS = VALID_AGENTS.filter((n) => ["sam", "leo"].includes(n)).map((n) => n.toUpperCase());
       let dispatched = false;
 
       // Extract agent from title prefix [SAM] or [LEO]

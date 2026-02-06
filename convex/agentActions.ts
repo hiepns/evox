@@ -13,9 +13,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { resolveAgentIdByName } from "./agentMappings";
-
-// Valid agent names
-const AGENT_NAMES = ["leo", "sam", "max", "ella"] as const;
+import { VALID_AGENTS } from "./agentRegistry";
 
 // Valid actions
 const ACTIONS = ["completed", "in_progress", "comment"] as const;
@@ -36,10 +34,11 @@ const ACTION_TO_STATUS: Record<string, "done" | "in_progress" | undefined> = {
 export const completeTask = mutation({
   args: {
     agent: v.union(
-      v.literal("leo"),
-      v.literal("sam"),
       v.literal("max"),
-      v.literal("ella")
+      v.literal("sam"),
+      v.literal("leo"),
+      v.literal("quinn"),
+      v.literal("evox")
     ),
     ticket: v.string(), // e.g., "AGT-124"
     action: v.union(

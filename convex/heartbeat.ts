@@ -14,10 +14,10 @@ import { v } from "convex/values";
 import { internalMutation, internalAction, query } from "./_generated/server";
 import { internal, api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { VALID_AGENTS, type AgentName } from "./agentRegistry";
 
-// Agent names for heartbeat scheduling
-const AGENTS = ["max", "sam", "leo"] as const;
-type AgentName = (typeof AGENTS)[number];
+// Agent names for heartbeat scheduling (filter to active agents)
+const AGENTS = VALID_AGENTS.filter((n) => ["max", "sam", "leo"].includes(n));
 
 /**
  * Internal mutation to update agent heartbeat timestamp

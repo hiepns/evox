@@ -7,9 +7,7 @@ import type { DataModel } from "./_generated/dataModel";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-const AGENT_NAMES = ["max", "sam", "leo"] as const;
-export type AgentName = (typeof AGENT_NAMES)[number];
+import { VALID_AGENTS, type AgentName } from "./agentRegistry";
 
 /** Resolve agent name to Convex agent ID. Throws if mapping missing. */
 export async function resolveAgentIdByName(

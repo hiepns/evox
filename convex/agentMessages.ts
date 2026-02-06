@@ -5,6 +5,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { resolveAgentIdByName } from "./agentMappings";
+import { VALID_AGENTS } from "./agentRegistry";
 
 const messageType = v.union(
   v.literal("handoff"),
@@ -43,7 +44,7 @@ export const sendMessage = mutation({
 export const getUnreadCounts = query({
   args: {},
   handler: async (ctx) => {
-    const names = ["max", "sam", "leo"] as const;
+    const names = VALID_AGENTS.filter((n) => ["max", "sam", "leo"].includes(n));
     const counts: Record<string, number> = {};
     for (const name of names) {
       try {
