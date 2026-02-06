@@ -13,7 +13,7 @@ import { AgentSidebar } from "@/components/evox/AgentSidebar";
 import { AgentSettingsModal } from "@/components/evox/AgentSettingsModal";
 import { ShortcutsHelpModal } from "@/components/evox/ShortcutsHelpModal";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { AgentProfileModal } from "@/components/dashboard-v2/agent-profile-modal";
+import { AgentDetailSlidePanel } from "@/components/dashboard-v2/agent-detail-slide-panel";
 import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
 import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
@@ -183,7 +183,7 @@ function HomeContent() {
       </div>
 
       {selectedAgent && (
-        <AgentProfileModal
+        <AgentDetailSlidePanel
           open={selectedAgentId !== null}
           agentId={selectedAgent._id}
           name={selectedAgent.name}

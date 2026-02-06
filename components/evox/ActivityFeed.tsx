@@ -42,7 +42,7 @@ type GitCommit = {
 
 type FeedItem = {
   id: string;
-  type: "commit" | "task" | "deploy" | "comms";
+  type: "commit" | "task" | "deploy" | "comms" | "heartbeat";
   icon: string;
   agent: string;
   action: string;
@@ -53,7 +53,7 @@ type FeedItem = {
 };
 
 // NOISE FILTERS
-const NOISE_EVENT_TYPES = ["channel_message", "heartbeat", "message", "posted"];
+const NOISE_EVENT_TYPES = ["channel_message", "message", "posted"];
 const NOISE_PATTERNS = [
   /posted to #/i,
   /heartbeat/i,
@@ -64,7 +64,7 @@ const NOISE_PATTERNS = [
 ];
 
 // HIGH IMPACT event types
-const IMPACT_EVENTS = ["completed", "push", "pr_merged", "deploy_success", "created", "dm_sent", "dm_received", "dm_read", "dm_replied"];
+const IMPACT_EVENTS = ["completed", "push", "pr_merged", "deploy_success", "created", "dm_sent", "dm_received", "dm_read", "dm_replied", "heartbeat"];
 
 // DM event type → icon + label
 const DM_ICONS: Record<string, { icon: string; label: string; color: string }> = {
@@ -126,6 +126,13 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
         let color = "text-secondary";
         let feedType: FeedItem["type"] = "task";
 
+        // Heartbeat events
+        if (eventType.includes("heartbeat")) {
+          icon = "~";
+          action = "heartbeat";
+          color = "text-tertiary";
+          feedType = "heartbeat";
+        }
         // DM communication events
         const dmInfo = DM_ICONS[eventType];
         if (dmInfo) {
@@ -168,12 +175,43 @@ export function ActivityFeed({ limit = 20, className }: ActivityFeedProps) {
     items.sort((a, b) => b.timestamp - a.timestamp);
 
     const seen = new Set<string>();
-    return items.filter((item) => {
+    const deduped = items.filter((item) => {
       const key = `${item.agent}-${item.action}-${item.detail.slice(0, 15)}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, limit);
+    });
+
+    // Collapse consecutive heartbeats from same agent (3+ → single row)
+    const collapsed: FeedItem[] = [];
+    let i = 0;
+    while (i < deduped.length) {
+      const item = deduped[i];
+      if (item.type === "heartbeat") {
+        let runEnd = i + 1;
+        while (runEnd < deduped.length && deduped[runEnd].type === "heartbeat" && deduped[runEnd].agent === item.agent) {
+          runEnd++;
+        }
+        const runLength = runEnd - i;
+        if (runLength >= 3) {
+          const newest = deduped[i];
+          const agoStr = formatDistanceToNow(newest.timestamp, { addSuffix: true });
+          collapsed.push({
+            ...newest,
+            detail: `${runLength} heartbeats (last ${agoStr})`,
+          });
+          i = runEnd;
+        } else {
+          for (let j = i; j < runEnd; j++) collapsed.push(deduped[j]);
+          i = runEnd;
+        }
+      } else {
+        collapsed.push(item);
+        i++;
+      }
+    }
+
+    return collapsed.slice(0, limit);
   }, [rawEvents, commits, limit]);
 
   if (feed.length === 0) {

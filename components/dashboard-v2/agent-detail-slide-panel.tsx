@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { AgentProfile } from "./agent-profile";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,15 @@ export function AgentDetailSlidePanel({
   avatar,
   onClose,
 }: AgentDetailSlidePanelProps) {
+  useEffect(() => {
+    if (!open) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [open, onClose]);
+
   if (!agentId) return null;
 
   return (

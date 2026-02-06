@@ -60,8 +60,9 @@
 
   /* === Design System V2 — Semantic Text === */
   --color-text-primary: #EDEDED;
-  --color-text-secondary: #A1A1A1;
-  --color-text-tertiary: #666666;
+  --color-text-secondary: #a0a0a0;
+  --color-text-tertiary: #707070;
+  --color-text-disabled: #484848;
   --color-primary0: #888888;
 
   /* === Design System V2 — Borders === */
@@ -78,7 +79,7 @@
   --color-gray-600: #4A4A4A;
   --color-gray-700: #6B6B6B;
   --color-gray-800: #7A7A7A;
-  --color-gray-900: #A1A1A1;
+  --color-gray-900: #a0a0a0;
   --color-gray-1000: #EDEDED;
 
   /* === Design System V2 — 10-Step Blue Scale (Accent) === */
@@ -306,8 +307,9 @@
 
   /* Text */
   --text-primary: #EDEDED;
-  --text-secondary: #A1A1A1;
-  --text-tertiary: #666666;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #707070;
+  --text-disabled: #484848;
 
   /* Borders */
   --border-default: #222222;

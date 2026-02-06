@@ -25,6 +25,8 @@ Seven principles govern every pixel in EVOX.
 
 **7. No Purely Decorative Elements** -- Every border, shadow, and animation serves a functional purpose. If it does not aid comprehension or interaction, remove it.
 
+**P6. Continuity Over Page Loads** -- Navigation should never cause a full page reload. Use SPA transitions, slide-over panels, and tab switches. The CEO should feel like they are operating a single control surface, not clicking between web pages.
+
 ---
 
 ## 2. Color System
@@ -46,8 +48,9 @@ Elevation is communicated through background lightness, not shadows.
 | Token | Hex | Contrast on base | Use |
 |-------|-----|-------------------|-----|
 | `--text-primary` | `#EDEDED` | 16.5:1 | Headings, primary content |
-| `--text-secondary` | `#A1A1A1` | 8.3:1 | Body text, descriptions |
-| `--text-tertiary` | `#666666` | 4.0:1 | Timestamps, captions (large text only) |
+| `--text-secondary` | `#a0a0a0` | 7.3:1 | Body text, descriptions |
+| `--text-tertiary` | `#707070` | 4.6:1 (WCAG AA) | Timestamps, captions |
+| `--text-disabled` | `#484848` | 2.5:1 | Decorative only, never for readable text |
 
 ### 2.3 Border Colors
 
@@ -73,7 +76,7 @@ Each hue provides 10 steps from subtle background to high-contrast foreground.
 | gray-600 | `#4A4A4A` | Active border |
 | gray-700 | `#6B6B6B` | High-contrast bg |
 | gray-800 | `#7A7A7A` | Hover high-contrast bg |
-| gray-900 | `#A1A1A1` | Secondary text/icons |
+| gray-900 | `#a0a0a0` | Secondary text/icons |
 | gray-1000 | `#EDEDED` | Primary text/icons |
 
 **Blue (Accent)**
@@ -710,6 +713,47 @@ Four variants, each with clear hierarchy.
 
 ---
 
+### 9.13 Agent Profile Panel (Slide-Over)
+
+**Purpose:** Show agent details without leaving the current view.
+
+**Anatomy:**
+```
++--- backdrop (black/50) ---+--- panel 420px ---+
+|                           | [✕]               |
+|   (click to close)        |                   |
+|                           |  AgentProfile      |
+|                           |  (scrollable)      |
+|                           |                   |
++---------------------------+-------------------+
+```
+
+**Specs:**
+- Width: 420px, slides from right
+- Background: surface-1
+- Border: 1px left border-default
+- Backdrop: black/50 (click to close)
+- Animation: translateX 200ms ease-out
+- Close: Esc key, click backdrop, or ✕ button
+- Contains `AgentProfile` component (reusable)
+
+**Rule:** Agent profiles are NEVER full-page routes. Always slide-over panel from sidebar click. `/agents/[name]` redirects to `/?view=team`.
+
+---
+
+### 9.14 Activity Sidebar — Heartbeat Collapsing
+
+**Purpose:** Prevent heartbeat noise from overwhelming the activity feed.
+
+**Rules:**
+- 3+ consecutive heartbeats from same agent → collapse into single row
+- Collapsed format: `"5 heartbeats (last 2m ago)"`
+- <3 consecutive heartbeats → show individually
+- Heartbeat icon: `~`, color: `text-tertiary`
+- Heartbeats are classified as IMPACT events (not noise) so they appear in feed
+
+---
+
 ## 10. Animation and Motion
 
 ### 10.1 Duration Tiers
@@ -802,8 +846,9 @@ CSS custom properties are the single source of truth. Define all colors as custo
   --bg-surface-3: #1A1A1A;
   --bg-surface-4: #222222;
   --text-primary: #EDEDED;
-  --text-secondary: #A1A1A1;
-  --text-tertiary: #666666;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #707070;
+  --text-disabled: #484848;
   --border-default: #222222;
   --border-hover: #333333;
   --border-focus: #0070F3;
@@ -1087,6 +1132,52 @@ export type StatusType = keyof typeof STATUS_COLORS;
 9. Verify WCAG contrast for all text-on-background combinations.
 10. Test keyboard navigation on every page.
 11. Run `npx next build` to verify no broken references.
+
+---
+
+---
+
+## 16. Navigation Architecture
+
+### 16.1 SPA-First
+
+EVOX is a single-page application. All navigation happens via URL query params (`/?view=kanban`, `/?view=team`) and in-page state (modals, slide-overs, drawers). No full page loads.
+
+### 16.2 Tab-Based Views
+
+Main content area uses `ViewTabs`: CEO, Kanban, Comms, Team. Switching tabs is instant (no route change, just query param swap).
+
+### 16.3 Detail Panels
+
+Agent profiles, task details, and settings open as overlays (slide-over or modal) on top of the current view. Never navigate to a separate route for detail views.
+
+### 16.4 Route Redirects
+
+Legacy routes that previously rendered full pages now redirect:
+- `/agents/[name]` → `/?view=team`
+
+The `/agents` route (Hall of Fame standalone) is kept but is secondary to the Team tab.
+
+---
+
+## 17. Dos and Don'ts
+
+### Do
+
+- Use semantic tokens from globals.css `@theme inline` for all colors
+- Use slide-over panels for agent detail views
+- Collapse noisy events (heartbeats) in activity feeds
+- Keep navigation within SPA (tabs + overlays)
+- Maintain WCAG AA contrast (4.5:1 minimum for body text)
+
+### Don't
+
+- **Don't use full-page navigation** for detail views (agent profiles, task details). Use slide-overs or modals.
+- **Don't create separate routes** for content that belongs in a tab or overlay. Tabs and panels keep context.
+- **Don't use text colors below `#707070`** on dark backgrounds for readable text. `#484848` (text-disabled) is for decorative use only.
+- Don't use raw color classes (`zinc-*`, `gray-*`, `slate-*`) -- always use Design System V2 tokens
+- Don't add box-shadows for elevation -- use background layering (surface-1 through surface-4)
+- Don't skip keyboard support (Esc to close, arrow keys for navigation)
 
 ---
 
