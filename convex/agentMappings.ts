@@ -7,9 +7,7 @@ import type { DataModel } from "./_generated/dataModel";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-
-const AGENT_NAMES = ["max", "sam", "leo"] as const;
-export type AgentName = (typeof AGENT_NAMES)[number];
+import { VALID_AGENTS, type AgentName } from "./agentRegistry";
 
 /** Resolve agent name to Convex agent ID. Throws if mapping missing. */
 export async function resolveAgentIdByName(
@@ -27,6 +25,21 @@ export async function resolveAgentIdByName(
     );
   }
   return mapping.convexAgentId;
+}
+
+/** Resolve Convex agent ID to agent name. Throws if mapping missing. */
+export async function resolveAgentNameById(
+  db: GenericDatabaseReader<DataModel>,
+  agentId: Id<"agents">
+): Promise<string> {
+  const allMappings = await db.query("agentMappings").collect();
+  const mapping = allMappings.find((m) => m.convexAgentId === agentId);
+  if (!mapping) {
+    throw new Error(
+      `Agent mapping not found for ID "${agentId}". Ensure agentMappings has max/sam/leo (run seed).`
+    );
+  }
+  return mapping.name;
 }
 
 /** Get Linear user ID for agent (for API attribution). Returns undefined if not set. */

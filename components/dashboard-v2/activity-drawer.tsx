@@ -33,26 +33,33 @@ export function ActivityDrawer({ open, onClose }: ActivityDrawerProps) {
       />
       <div
         className={cn(
-          "fixed top-0 right-0 h-full w-[400px] z-40 border-l border-white/[0.08] bg-[#0f0f1a] shadow-xl transition-transform duration-300",
+          "fixed top-0 right-0 h-full w-[400px] z-40 border-l border-white/[0.08] bg-base shadow-xl transition-transform duration-300",
           open ? "translate-x-0" : "translate-x-full"
         )}
-        aria-modal
+        role="dialog"
+        aria-modal="true"
         aria-labelledby="activity-drawer-title"
       >
         <div className="flex h-full flex-col">
+          {/* Header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-3">
-            <h2 id="activity-drawer-title" className="text-xs font-medium tracking-widest uppercase text-white/40">
+            <span
+              id="activity-drawer-title"
+              className="text-xs font-medium tracking-widest uppercase text-white"
+            >
               Activity
-            </h2>
+            </span>
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-white/40 transition-colors hover:text-white/90"
+              className="rounded p-1 text-secondary transition-colors hover:text-primary"
               aria-label="Close drawer"
             >
               ✕
             </button>
           </div>
+
+          {/* Content */}
           <div className="flex-1 min-h-0 overflow-hidden">
             <ActivityPage />
           </div>

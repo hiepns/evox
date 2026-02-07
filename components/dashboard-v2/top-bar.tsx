@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { NotificationBell } from "@/components/notification-bell";
 
+import { useViewerMode } from "@/contexts/ViewerModeContext";
+
 interface TopBarProps {
   agentsActive?: number;
   tasksInQueue?: number;
@@ -28,6 +30,7 @@ export function TopBar({
 }: TopBarProps) {
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
+  const { isViewerMode } = useViewerMode();
 
   useEffect(() => {
     const tick = () => {
@@ -41,40 +44,45 @@ export function TopBar({
   }, []);
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#222] bg-[#0a0a0a] px-4">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border-default bg-base px-4">
       <div className="flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-zinc-50">EVOX</h1>
-        <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Command Center</span>
+        <h1 className="text-lg font-semibold text-primary">EVOX</h1>
+        <span className="text-xs font-semibold uppercase tracking-wider text-secondary">Command Center</span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-500">
-          In Progress <span className="font-medium text-zinc-50">{inProgress}</span>
+        <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-surface-1 px-2 py-1 text-xs text-secondary">
+          In Progress <span className="font-medium text-primary">{inProgress}</span>
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-500">
-          Done <span className="font-medium text-zinc-50">{doneToday}</span>
+        <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-surface-1 px-2 py-1 text-xs text-secondary">
+          Done <span className="font-medium text-primary">{doneToday}</span>
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded border border-[#222] bg-[#111] px-2 py-1 text-xs text-zinc-500">
-          Total <span className="font-medium text-zinc-50">{totalTasks}</span>
+        <span className="inline-flex items-center gap-1.5 rounded border border-border-default bg-surface-1 px-2 py-1 text-xs text-secondary">
+          Total <span className="font-medium text-primary">{totalTasks}</span>
         </span>
       </div>
       <div className="flex items-center gap-4">
         <div className="text-right text-xs">
-          <div className="font-mono text-zinc-50">{time}</div>
-          <div className="text-[#555]">{date}</div>
+          <div className="font-mono text-primary">{time}</div>
+          <div className="text-secondary">{date}</div>
         </div>
+        {isViewerMode && (
+          <span className="rounded-md border border-blue-500/30 bg-blue-500/10 px-2 py-1 text-[10px] font-medium text-blue-400">
+            VIEWER MODE
+          </span>
+        )}
         <NotificationBell
           totalUnread={notificationTotalUnread}
           onBellClick={onBellClick}
         />
-        <div className="flex items-center gap-1.5 text-xs text-[#888]">
+        <div className="flex items-center gap-1.5 text-xs text-secondary">
           <span className="h-2 w-2 rounded-full bg-green-500" />
           Online
         </div>
-        {onSettingsClick && (
+        {onSettingsClick && !isViewerMode && (
           <button
             type="button"
             onClick={onSettingsClick}
-            className="rounded-lg p-2 text-zinc-500 hover:bg-[#1a1a1a] hover:text-zinc-50"
+            className="rounded-lg p-2 text-secondary hover:bg-surface-1 hover:text-primary"
             aria-label="Settings"
           >
             <Settings className="h-5 w-5" />

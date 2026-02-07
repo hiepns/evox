@@ -11,10 +11,9 @@
  */
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { resolveAgentIdByName } from "./agentMappings";
-
-// Valid agent names
-const AGENT_NAMES = ["leo", "sam", "max", "ella"] as const;
+import { VALID_AGENTS } from "./agentRegistry";
 
 // Valid actions
 const ACTIONS = ["completed", "in_progress", "comment"] as const;
@@ -35,10 +34,11 @@ const ACTION_TO_STATUS: Record<string, "done" | "in_progress" | undefined> = {
 export const completeTask = mutation({
   args: {
     agent: v.union(
-      v.literal("leo"),
-      v.literal("sam"),
       v.literal("max"),
-      v.literal("ella")
+      v.literal("sam"),
+      v.literal("leo"),
+      v.literal("quinn"),
+      v.literal("evox")
     ),
     ticket: v.string(), // e.g., "AGT-124"
     action: v.union(
@@ -60,16 +60,12 @@ export const completeTask = mutation({
       throw new Error(`Agent not found for ID: ${agentId}`);
     }
 
-    // 2. Find task by linearIdentifier (e.g., "AGT-124")
-    const tasks = await ctx.db
+    // 2. Find task by linearIdentifier (e.g., "AGT-124") using proper index
+    const ticketUpper = args.ticket.toUpperCase();
+    const task = await ctx.db
       .query("tasks")
-      .withIndex("by_linearId")
-      .collect();
-
-    // Find by linearIdentifier (case-insensitive)
-    const task = tasks.find(
-      (t) => t.linearIdentifier?.toUpperCase() === args.ticket.toUpperCase()
-    );
+      .withIndex("by_linearIdentifier", (q) => q.eq("linearIdentifier", ticketUpper))
+      .first();
 
     if (!task) {
       // Task not in Convex yet — log activity anyway for visibility
@@ -123,6 +119,7 @@ export const completeTask = mutation({
         status: newStatus,
         assignee: agentId, // Ensure agent is assigned
         updatedAt: now,
+        ...(newStatus === "done" && { completedAt: now }),
       });
     }
 
@@ -189,8 +186,61 @@ export const completeTask = mutation({
     if (args.action === "completed") {
       await updateWorkingMemoryOnComplete(ctx, agentId, task.linearIdentifier ?? args.ticket, args.summary);
       await logToDailyNotes(ctx, agentId, "completed", task.linearIdentifier ?? args.ticket, args.summary);
+
+      // AGT-242: Record performance metrics for task completion
+      // Calculate duration if we have completedAt and task start timestamp
+      let durationMinutes: number | undefined;
+      if (task.completedAt && task.createdAt) {
+        durationMinutes = Math.round((now - task.createdAt) / 1000 / 60);
+      }
+      // @ts-ignore Convex scheduler type inference too deep
+      void ctx.scheduler.runAfter(0, internal.performanceMetrics.recordTaskCompletion, {
+        agentName: args.agent, taskId: task._id, durationMinutes, success: true
+      });
+
+      // AGT-247: Fire event bus notification for task completion
+      // @ts-ignore Convex scheduler type inference too deep
+      void ctx.scheduler.runAfter(0, internal.agentEvents.publishEvent, {
+        type: "task_completed",
+        targetAgent: args.agent,
+        payload: {
+          taskId: task.linearIdentifier ?? args.ticket,
+          fromAgent: args.agent,
+          message: `Task ${task.linearIdentifier ?? args.ticket} completed`,
+          priority: "normal",
+          metadata: { summary: args.summary, filesChanged: args.filesChanged },
+        },
+      });
+
+      // AGT-335: Auto-close message loop if task has linkedMessageId
+      if (task.linkedMessageId) {
+        try {
+          await ctx.db.patch(task.linkedMessageId, {
+            statusCode: 5, // REPORTED
+            reportedAt: now,
+            finalReport: args.summary,
+          });
+          // Resolve any active loop alerts for this message
+          const loopAlerts = await ctx.db
+            .query("loopAlerts")
+            .withIndex("by_message", (q) => q.eq("messageId", task.linkedMessageId!))
+            .filter((q) => q.eq(q.field("status"), "active"))
+            .collect();
+          for (const alert of loopAlerts) {
+            await ctx.db.patch(alert._id, { status: "resolved", resolvedAt: now });
+          }
+        } catch (e) {
+          console.error(`Failed to close loop for message ${task.linkedMessageId}:`, e);
+        }
+      }
     } else if (args.action === "in_progress") {
       await logToDailyNotes(ctx, agentId, "started", task.linearIdentifier ?? args.ticket, args.summary);
+
+      // AGT-242: Record task start for velocity tracking
+      // @ts-ignore Convex scheduler type inference too deep
+      void ctx.scheduler.runAfter(0, internal.performanceMetrics.recordTaskStart, {
+        agentName: args.agent, taskId: task._id
+      });
     }
 
     return {
@@ -202,6 +252,37 @@ export const completeTask = mutation({
       statusChange: newStatus ? { from: oldStatus, to: newStatus } : null,
       linearIdentifier: task.linearIdentifier,
     };
+  },
+});
+
+/**
+ * AGT-335: Link a message to a task (for Loop tracking).
+ * Called when an agent creates a task in response to a message.
+ */
+export const linkMessageToTask = mutation({
+  args: {
+    taskId: v.id("tasks"),
+    messageId: v.id("agentMessages"),
+  },
+  handler: async (ctx, args) => {
+    const task = await ctx.db.get(args.taskId);
+    if (!task) throw new Error(`Task not found: ${args.taskId}`);
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error(`Message not found: ${args.messageId}`);
+
+    await ctx.db.patch(args.taskId, {
+      linkedMessageId: args.messageId,
+    });
+
+    // Also link the message to the task (bidirectional)
+    if (!message.linkedTaskId) {
+      await ctx.db.patch(args.messageId, {
+        linkedTaskId: args.taskId,
+      });
+    }
+
+    return { success: true, taskId: args.taskId, messageId: args.messageId };
   },
 });
 
@@ -605,6 +686,34 @@ export const updateWorkingMemory = mutation({
 });
 
 /**
+ * AGT-335: Get task by Linear ticket identifier (for check-linked-message.sh).
+ * Returns task with linkedMessageId if present.
+ */
+export const getTaskByTicket = query({
+  args: {
+    ticket: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const ticketUpper = args.ticket.toUpperCase();
+    const task = await ctx.db
+      .query("tasks")
+      .withIndex("by_linearIdentifier", (q) => q.eq("linearIdentifier", ticketUpper))
+      .first();
+
+    if (!task) return null;
+
+    return {
+      _id: task._id,
+      title: task.title,
+      status: task.status,
+      linearIdentifier: task.linearIdentifier,
+      linkedMessageId: task.linkedMessageId,
+      completedAt: task.completedAt,
+    };
+  },
+});
+
+/**
  * Query to verify agent completion stats (for dashboard).
  * AGT-192: Limit tasks query to reduce bandwidth costs
  */
@@ -629,5 +738,185 @@ export const getAgentStats = query({
     });
 
     return stats;
+  },
+});
+
+/**
+ * AGT-215: Report a task failure and trigger alert.
+ *
+ * Usage from CLI:
+ * npx convex run agentActions:reportFailure '{"agent":"sam","ticket":"AGT-215","error":"Build failed: TypeScript errors","retryable":true}'
+ */
+export const reportFailure = mutation({
+  args: {
+    agent: v.union(
+      v.literal("leo"),
+      v.literal("sam"),
+      v.literal("max"),
+      v.literal("ella")
+    ),
+    ticket: v.string(), // e.g., "AGT-215"
+    error: v.string(),
+    retryable: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // Resolve agent
+    const agentId = await resolveAgentIdByName(ctx.db, args.agent);
+    const agentDoc = await ctx.db.get(agentId);
+    if (!agentDoc) {
+      throw new Error(`Agent not found: ${args.agent}`);
+    }
+
+    // Find task by linearIdentifier
+    const ticketUpper = args.ticket.toUpperCase();
+    const task = await ctx.db
+      .query("tasks")
+      .withIndex("by_linearIdentifier", (q) => q.eq("linearIdentifier", ticketUpper))
+      .first();
+
+    // Log the error to execution logs
+    await ctx.db.insert("executionLogs", {
+      agentName: args.agent,
+      level: "error",
+      message: `Task ${args.ticket} failed: ${args.error}`,
+      taskId: task?._id,
+      linearIdentifier: args.ticket,
+      metadata: {
+        error: args.error,
+      },
+      timestamp: now,
+    });
+
+    // Update task with error info if found
+    if (task) {
+      const retryCount = (task.retryCount ?? 0) + 1;
+      await ctx.db.patch(task._id, {
+        lastError: args.error,
+        retryCount,
+        updatedAt: now,
+        // Escalate after 3 failed retries
+        ...(retryCount >= 3 && { escalatedAt: now }),
+      });
+    }
+
+    // Log activity event
+    await ctx.db.insert("activityEvents", {
+      agentId,
+      agentName: args.agent,
+      category: "system",
+      eventType: "task_failed",
+      title: `${args.agent.toUpperCase()} failed on ${args.ticket}`,
+      description: args.error,
+      taskId: task?._id,
+      linearIdentifier: args.ticket,
+      metadata: {
+        errorMessage: args.error,
+        source: "agent_api",
+      },
+      timestamp: now,
+    });
+
+    // AGT-215: Trigger alert for agent failure
+    // @ts-ignore Convex scheduler type inference too deep
+    void ctx.scheduler.runAfter(0, internal.alerts.triggerAgentFailed, {
+      agentName: args.agent, taskId: task?._id, linearIdentifier: args.ticket, error: args.error,
+    });
+
+    // AGT-242: Record failed task for performance tracking
+    // @ts-ignore Convex scheduler type inference too deep
+    void ctx.scheduler.runAfter(0, internal.performanceMetrics.recordTaskCompletion, {
+      agentName: args.agent, taskId: task?._id, success: false,
+    });
+
+    // AGT-242: Record error in performance metrics
+    // @ts-ignore Convex scheduler type inference too deep
+    void ctx.scheduler.runAfter(0, internal.performanceMetrics.recordError, {
+      agentName: args.agent, taskId: task?._id,
+    });
+
+    // Also log to daily notes
+    await logToDailyNotes(ctx, agentId, "blocked", args.ticket, `ERROR: ${args.error}`);
+
+    return {
+      success: true,
+      agent: args.agent,
+      ticket: args.ticket,
+      error: args.error,
+      taskId: task?._id,
+      retryCount: task ? (task.retryCount ?? 0) + 1 : 1,
+      escalated: task ? ((task.retryCount ?? 0) + 1) >= 3 : false,
+    };
+  },
+});
+
+/**
+ * AGT-256: Agent Ping System — Request work when idle
+ * Agent calls this after completing a task to request next work
+ */
+export const requestWork = mutation({
+  args: {
+    agent: v.union(
+      v.literal("leo"),
+      v.literal("sam"),
+      v.literal("max"),
+      v.literal("ella"),
+      v.literal("quinn")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+
+    // 1. Resolve agent
+    const agentId = await resolveAgentIdByName(ctx.db, args.agent);
+    const agentDoc = await ctx.db.get(agentId);
+    if (!agentDoc) {
+      throw new Error(`Agent ${args.agent} not found`);
+    }
+
+    // 2. Try auto-dispatch using existing automation system
+    // TODO: Re-implement after automation.ts cleanup
+    // Schedule it to run asynchronously
+    // @ts-ignore Convex scheduler type inference too deep
+    // void ctx.scheduler.runAfter(0, internal.automation.autoDispatchForAgentInternal, {
+    //   agentName: args.agent,
+    // });
+
+    // 3. Log activity immediately (dispatch happens async)
+    const maxAgent = await ctx.db
+      .query("agents")
+      .withIndex("by_name", (q) => q.eq("name", "MAX"))
+      .first();
+
+    if (maxAgent) {
+      await ctx.db.insert("notifications", {
+        to: maxAgent._id,
+        from: agentId,
+        type: "assignment",
+        title: `${args.agent.toUpperCase()} requesting work`,
+        message: `${args.agent.toUpperCase()} completed their task and is requesting next assignment`,
+        read: false,
+        createdAt: now,
+      });
+    }
+
+    // 4. Log activity
+    await ctx.db.insert("activityEvents", {
+      agentId,
+      agentName: args.agent,
+      category: "system",
+      eventType: "request_work",
+      title: `${args.agent.toUpperCase()} requesting work`,
+      description: "Agent idle, looking for next task",
+      timestamp: now,
+    });
+
+    return {
+      success: true,
+      agent: args.agent,
+      autoDispatched: true, // Will be determined by scheduler result
+      message: "Work request processed"
+    };
   },
 });

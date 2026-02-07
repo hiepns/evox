@@ -30,6 +30,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
 import crypto from "crypto";
+import { AGENT_ORDER } from "@/lib/constants";
 
 // Lazily initialize Convex client
 function getConvexClient() {
@@ -77,16 +78,15 @@ function mapLinearPriority(
   }
 }
 
-// Verify webhook signature (optional but recommended)
+// Verify webhook signature (mandatory — fail closed if secret not configured)
 function verifyWebhookSignature(
   body: string,
   signature: string | null,
   secret: string | undefined
 ): boolean {
   if (!secret) {
-    // No secret configured, skip verification (dev mode)
-    console.warn("LINEAR_WEBHOOK_SECRET not set, skipping signature verification");
-    return true;
+    console.error("LINEAR_WEBHOOK_SECRET not set — rejecting request (fail closed)");
+    return false;
   }
   if (!signature) {
     console.error("No signature provided in webhook request");
@@ -101,8 +101,22 @@ function verifyWebhookSignature(
   );
 }
 
+// Linear issue data from webhook payload
+interface LinearIssueData {
+  id: string;
+  identifier: string;
+  title?: string;
+  description?: string;
+  state?: { name: string };
+  priority?: number;
+  url?: string;
+  assignee?: { name?: string; id?: string };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Parse agent name from assignee or description
-function parseAgentFromIssue(data: any): string {
+function parseAgentFromIssue(data: LinearIssueData): string {
   // Try assignee name first
   const assigneeName = data.assignee?.name?.toLowerCase();
   if (assigneeName === "sam" || assigneeName === "leo" || assigneeName === "max") {
@@ -145,11 +159,6 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(bodyText);
     const { action, type, data, updatedFrom } = payload;
 
-    console.log(`Linear webhook: ${type} ${action}`, {
-      identifier: data?.identifier,
-      state: data?.state?.name,
-    });
-
     // Only process Issue updates with state changes
     if (type !== "Issue") {
       return NextResponse.json({
@@ -159,14 +168,15 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check if this is a state change
+    // Check if this is a state change or assignment change
     const isStateChange = action === "update" && updatedFrom?.stateId;
+    const isAssignmentChange = action === "update" && updatedFrom?.assigneeId !== undefined;
 
-    if (!isStateChange && action !== "create") {
+    if (!isStateChange && !isAssignmentChange && action !== "create") {
       return NextResponse.json({
         success: true,
         skipped: true,
-        reason: "Not a state change or create event",
+        reason: "Not a state change, assignment change, or create event",
       });
     }
 
@@ -182,8 +192,6 @@ export async function POST(request: NextRequest) {
     const evoxStatus = mapLinearStatus(stateName);
     const evoxPriority = mapLinearPriority(priority);
     const agentName = parseAgentFromIssue(data);
-
-    console.log(`Processing ${linearIdentifier}: status=${evoxStatus}, agent=${agentName}`);
 
     // Call Convex to upsert the task
     const convex = getConvexClient();
@@ -217,7 +225,32 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(data.updatedAt || Date.now()).getTime(),
     });
 
-    console.log(`Synced ${linearIdentifier}:`, result);
+    // AGT-255: If this is an assignment change, fire agentEvent to wake agent
+    if (isAssignmentChange && data.assignee) {
+      const assigneeName = data.assignee.name?.toLowerCase();
+      const validAgents = AGENT_ORDER;
+
+      if (validAgents.includes(assigneeName)) {
+        // Fire task_assigned event via Convex
+        try {
+          await convex.mutation(api.agentEvents.publishEvent, {
+            type: "task_assigned",
+            targetAgent: assigneeName,
+            payload: {
+              taskId: linearIdentifier,
+              message: `New task assigned: ${title}`,
+              priority: evoxPriority === "urgent" ? "urgent" : evoxPriority === "high" ? "high" : "normal",
+              metadata: {
+                linearUrl,
+                assignedBy: "linear_webhook",
+              },
+            },
+          });
+        } catch (error) {
+          console.error(`Failed to fire agentEvent for ${assigneeName}:`, error);
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

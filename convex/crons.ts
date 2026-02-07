@@ -36,13 +36,89 @@ crons.cron(
   {}
 );
 
-// AGT-120: Auto Daily Standup Generation
-// Runs at 6:00 PM UTC (11:00 AM PST / 2:00 PM EST / end of Asia workday)
-// Generates standup summaries and pushes to Son
+// AGT-215: Alert System — Check for stuck agents every 7 minutes
+// Triggers alerts when agents are stuck on a task for >30 minutes
+// Staggered from sync-linear (5m) to reduce write conflicts
+crons.interval(
+  "check-stuck-agents",
+  { minutes: 7 },
+  internal.alerts.checkStuckAgents,
+  {}
+);
+
+// AGT-216: Auto-Recovery — Self-Healing Agent Restart & Retry
+// Checks for crashed agents (heartbeat timeout) and auto-restarts with backoff
+// Circuit breaker stops after 3 consecutive failures
+// Staggered to 6 min to avoid overlap with sync-linear (5m) and stuck-agents (7m)
+crons.interval(
+  "auto-recovery-check",
+  { minutes: 6 },
+  internal.recovery.runRecoveryCheck,
+  {}
+);
+
+// AGT-223: Max Autonomous Monitor
+// Background monitoring, self-check, agent sync, inter-agent coordination
+// Checks: agent health, task progress, stuck tasks, errors
+// Creates alerts but Telegram notifications are disabled until sendTelegramAlert is fixed
+crons.interval(
+  "max-monitor",
+  { minutes: 15 },
+  internal.maxMonitor.check,
+  {}
+);
+
+// AGT-247: Event Bus — Cleanup expired events every 9 minutes
+// Removes events older than 5 minutes that were never delivered
+// Staggered to reduce cron overlap
+crons.interval(
+  "cleanup-expired-events",
+  { minutes: 9 },
+  internal.agentEvents.cleanupExpiredEvents,
+  {}
+);
+
+// AGT-250: Website Health Monitor — Check every 1 minute
+// Alerts via Telegram if site goes down
+crons.interval(
+  "website-health-check",
+  { minutes: 1 },
+  internal.healthMonitor.checkWebsite,
+  {}
+);
+
+// AGT-252: Auto-Recruit Agents — Check every 15 minutes
+// Auto-spawns new agents when backlog is high or all agents busy
+crons.interval(
+  "auto-recruit-agents",
+  { minutes: 15 },
+  internal.agentTemplates.checkAndAutoSpawn,
+  {}
+);
+
+// CORE-209 + AGT-337: The Loop — SLA Monitor every 8 minutes
+// Detects AND auto-escalates: reply >15min → DM MAX, action >2h → critical MAX, report >24h → broken + CEO dispatch
+// Staggered from sync-linear (5m) to reduce write conflicts
+crons.interval(
+  "loop-sla-monitor",
+  { minutes: 8 },
+  internal.loopMonitor.checkSLABreaches,
+  {}
+);
+
+// CORE-209: The Loop — Hourly metrics aggregation
 crons.cron(
-  "daily-standup",
-  "0 18 * * *", // 6:00 PM UTC daily
-  internal.standup.generateDailyStandup,
+  "loop-metrics-hourly",
+  "0 * * * *", // Top of every hour
+  internal.loopMetrics.aggregateHourlyMetrics,
+  {}
+);
+
+// CORE-209: The Loop — Daily metrics for CEO dashboard
+crons.cron(
+  "loop-metrics-daily",
+  "0 6 * * *", // 6:00 AM UTC daily
+  internal.loopMetrics.aggregateDailyMetrics,
   {}
 );
 

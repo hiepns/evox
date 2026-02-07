@@ -5,7 +5,18 @@ import { mutation, query } from "./_generated/server";
 export const create = mutation({
   args: {
     name: v.string(),
-    role: v.union(v.literal("pm"), v.literal("backend"), v.literal("frontend")),
+    role: v.union(
+      v.literal("pm"),
+      v.literal("backend"),
+      v.literal("frontend"),
+      v.literal("qa"),
+      v.literal("devops"),
+      v.literal("content"),
+      v.literal("security"),
+      v.literal("data"),
+      v.literal("research"),
+      v.literal("design")
+    ),
     avatar: v.string(),
   },
   handler: async (ctx, args) => {
@@ -46,9 +57,11 @@ export const listForStrip = query({
     return Promise.all(
       agents.map(async (a) => {
         let currentTaskIdentifier: string | null = null;
+        let currentTaskTitle: string | null = null;
         if (a.currentTask) {
           const task = await ctx.db.get(a.currentTask);
           currentTaskIdentifier = task?.linearIdentifier ?? null;
+          currentTaskTitle = task?.title ?? null;
         }
         return {
           _id: a._id,
@@ -57,6 +70,8 @@ export const listForStrip = query({
           status: a.status,
           avatar: a.avatar,
           currentTaskIdentifier,
+          currentTaskTitle,
+          statusSince: a.statusSince ?? null,
         };
       })
     );
@@ -121,7 +136,18 @@ export const update = mutation({
     name: v.optional(v.string()),
     avatar: v.optional(v.string()),
     role: v.optional(
-      v.union(v.literal("pm"), v.literal("backend"), v.literal("frontend"))
+      v.union(
+        v.literal("pm"),
+        v.literal("backend"),
+        v.literal("frontend"),
+        v.literal("qa"),
+        v.literal("devops"),
+        v.literal("content"),
+        v.literal("security"),
+        v.literal("data"),
+        v.literal("research"),
+        v.literal("design")
+      )
     ),
   },
   handler: async (ctx, args) => {
@@ -243,5 +269,263 @@ export const remove = mutation({
   args: { id: v.id("agents") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+/**
+ * AGT-273: Get agent status with computed online/offline indicator
+ * Returns agent data + computed status based on heartbeat timeout:
+ * - online: last heartbeat < 15 min ago
+ * - offline: last heartbeat >= 15 min ago or no heartbeat
+ */
+export const getAgentStatus = query({
+  args: { name: v.string() },
+  handler: async (ctx, args) => {
+    const agents = await ctx.db.query("agents").withIndex("by_name", (q) => q.eq("name", args.name.toLowerCase())).collect();
+    const agent = agents[0];
+
+    if (!agent) {
+      return null;
+    }
+
+    const now = Date.now();
+    const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+    // Compute status based on heartbeat
+    const lastHeartbeat = agent.lastHeartbeat ?? agent.lastSeen;
+    const msSinceHeartbeat = now - lastHeartbeat;
+    const computedStatus = msSinceHeartbeat < OFFLINE_THRESHOLD_MS ? "online" : "offline";
+
+    return {
+      _id: agent._id,
+      name: agent.name,
+      role: agent.role,
+      status: agent.status, // Manual/current status
+      computedStatus, // Computed from heartbeat
+      lastHeartbeat: agent.lastHeartbeat,
+      lastSeen: agent.lastSeen,
+      msSinceHeartbeat,
+      isOnline: computedStatus === "online",
+      currentTask: agent.currentTask,
+    };
+  },
+});
+
+/**
+ * AGT-273: Get all agents status with computed online/offline indicators
+ * For CEO Dashboard - shows which agents are truly online
+ */
+export const getAllAgentStatuses = query({
+  handler: async (ctx) => {
+    const agents = await ctx.db.query("agents").collect();
+    const now = Date.now();
+    const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+
+    return agents.map((agent) => {
+      const lastHeartbeat = agent.lastHeartbeat ?? agent.lastSeen;
+      const msSinceHeartbeat = now - lastHeartbeat;
+      const computedStatus = msSinceHeartbeat < OFFLINE_THRESHOLD_MS ? "online" : "offline";
+
+      return {
+        _id: agent._id,
+        name: agent.name,
+        role: agent.role,
+        avatar: agent.avatar,
+        status: agent.status,
+        computedStatus,
+        lastHeartbeat: agent.lastHeartbeat,
+        lastSeen: agent.lastSeen,
+        msSinceHeartbeat,
+        isOnline: computedStatus === "online",
+        currentTask: agent.currentTask,
+      };
+    });
+  },
+});
+
+/**
+ * Get comprehensive health status for all agents
+ * Includes metrics, uptime, task stats, and health score
+ * Used for monitoring dashboards and alerting
+ */
+export const getAgentHealth = query({
+  handler: async (ctx) => {
+    const agents = await ctx.db.query("agents").collect();
+    const now = Date.now();
+    const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+    const STUCK_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+
+    // Get recent dispatches for metrics (last 24 hours)
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+    return Promise.all(
+      agents.map(async (agent) => {
+        const lastHeartbeat = agent.lastHeartbeat ?? agent.lastSeen ?? 0;
+        const msSinceHeartbeat = now - lastHeartbeat;
+
+        // Compute status
+        let computedStatus: "online" | "offline" | "stuck" | "busy";
+        if (msSinceHeartbeat > OFFLINE_THRESHOLD_MS) {
+          computedStatus = "offline";
+        } else if (agent.status === "busy" && msSinceHeartbeat > STUCK_THRESHOLD_MS) {
+          computedStatus = "stuck";
+        } else if (agent.status === "busy") {
+          computedStatus = "busy";
+        } else {
+          computedStatus = "online";
+        }
+
+        // Get dispatch metrics for this agent
+        const dispatches = await ctx.db
+          .query("dispatches")
+          .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+          .filter((q) => q.gte(q.field("createdAt"), oneDayAgo))
+          .collect();
+
+        const completed = dispatches.filter((d) => d.status === "completed").length;
+        const failed = dispatches.filter((d) => d.status === "failed").length;
+        const running = dispatches.filter((d) => d.status === "running").length;
+        const pending = dispatches.filter((d) => d.status === "pending").length;
+        const total = completed + failed;
+
+        // Calculate success rate
+        const successRate = total > 0 ? Math.round((completed / total) * 100) : 100;
+
+        // Calculate health score (0-100)
+        // Factors: online status, success rate, recent activity
+        let healthScore = 100;
+        if (computedStatus === "offline") healthScore -= 50;
+        if (computedStatus === "stuck") healthScore -= 30;
+        if (successRate < 80) healthScore -= (80 - successRate) / 2;
+        if (total === 0 && msSinceHeartbeat > 60 * 60 * 1000) healthScore -= 10; // No activity in 1hr
+        healthScore = Math.max(0, Math.min(100, healthScore));
+
+        return {
+          agent: {
+            _id: agent._id,
+            name: agent.name,
+            role: agent.role,
+          },
+          status: {
+            current: agent.status,
+            computed: computedStatus,
+            lastHeartbeat,
+            msSinceHeartbeat,
+            currentTask: agent.currentTask,
+          },
+          metrics: {
+            last24h: {
+              completed,
+              failed,
+              running,
+              pending,
+              total,
+              successRate,
+            },
+          },
+          health: {
+            score: healthScore,
+            isHealthy: healthScore >= 70,
+            issues: [
+              ...(computedStatus === "offline" ? ["Agent offline (no heartbeat)"] : []),
+              ...(computedStatus === "stuck" ? ["Agent stuck (busy but no progress)"] : []),
+              ...(successRate < 80 ? [`Low success rate: ${successRate}%`] : []),
+            ],
+          },
+          timestamp: now,
+        };
+      })
+    );
+  },
+});
+
+/**
+ * Get health status for a single agent by name
+ */
+export const getAgentHealthByName = query({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    const agent = await ctx.db
+      .query("agents")
+      .withIndex("by_name", (q) => q.eq("name", name.toUpperCase()))
+      .first();
+
+    if (!agent) {
+      return null;
+    }
+
+    const now = Date.now();
+    const OFFLINE_THRESHOLD_MS = 15 * 60 * 1000;
+    const STUCK_THRESHOLD_MS = 10 * 60 * 1000;
+    const oneDayAgo = now - 24 * 60 * 60 * 1000;
+
+    const lastHeartbeat = agent.lastHeartbeat ?? agent.lastSeen ?? 0;
+    const msSinceHeartbeat = now - lastHeartbeat;
+
+    let computedStatus: "online" | "offline" | "stuck" | "busy";
+    if (msSinceHeartbeat > OFFLINE_THRESHOLD_MS) {
+      computedStatus = "offline";
+    } else if (agent.status === "busy" && msSinceHeartbeat > STUCK_THRESHOLD_MS) {
+      computedStatus = "stuck";
+    } else if (agent.status === "busy") {
+      computedStatus = "busy";
+    } else {
+      computedStatus = "online";
+    }
+
+    // Get dispatch metrics
+    const dispatches = await ctx.db
+      .query("dispatches")
+      .withIndex("by_agent", (q) => q.eq("agentId", agent._id))
+      .filter((q) => q.gte(q.field("createdAt"), oneDayAgo))
+      .collect();
+
+    const completed = dispatches.filter((d) => d.status === "completed").length;
+    const failed = dispatches.filter((d) => d.status === "failed").length;
+    const running = dispatches.filter((d) => d.status === "running").length;
+    const pending = dispatches.filter((d) => d.status === "pending").length;
+    const total = completed + failed;
+    const successRate = total > 0 ? Math.round((completed / total) * 100) : 100;
+
+    let healthScore = 100;
+    if (computedStatus === "offline") healthScore -= 50;
+    if (computedStatus === "stuck") healthScore -= 30;
+    if (successRate < 80) healthScore -= (80 - successRate) / 2;
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    return {
+      agent: {
+        _id: agent._id,
+        name: agent.name,
+        role: agent.role,
+      },
+      status: {
+        current: agent.status,
+        computed: computedStatus,
+        lastHeartbeat,
+        msSinceHeartbeat,
+        currentTask: agent.currentTask,
+      },
+      metrics: {
+        last24h: {
+          completed,
+          failed,
+          running,
+          pending,
+          total,
+          successRate,
+        },
+      },
+      health: {
+        score: healthScore,
+        isHealthy: healthScore >= 70,
+        issues: [
+          ...(computedStatus === "offline" ? ["Agent offline (no heartbeat)"] : []),
+          ...(computedStatus === "stuck" ? ["Agent stuck (busy but no progress)"] : []),
+          ...(successRate < 80 ? [`Low success rate: ${successRate}%`] : []),
+        ],
+      },
+      timestamp: now,
+    };
   },
 });

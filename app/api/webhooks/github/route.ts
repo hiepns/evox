@@ -36,8 +36,8 @@ function verifyWebhookSignature(
   secret: string | undefined
 ): boolean {
   if (!secret) {
-    console.warn("GITHUB_WEBHOOK_SECRET not set, skipping signature verification");
-    return true;
+    console.error("GITHUB_WEBHOOK_SECRET not set — rejecting request (fail closed)");
+    return false;
   }
   if (!signature) {
     console.error("No signature provided in webhook request");
@@ -75,11 +75,6 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(bodyText);
 
-    console.log(`GitHub webhook: ${eventType}`, {
-      ref: payload.ref,
-      commits: payload.commits?.length,
-    });
-
     // Only process push events
     if (eventType !== "push") {
       return NextResponse.json({
@@ -94,8 +89,6 @@ export async function POST(request: NextRequest) {
     const result = await convex.action(api.webhooks.processGitHubPush, {
       payload,
     });
-
-    console.log("GitHub push processed:", result);
 
     return NextResponse.json({
       success: true,

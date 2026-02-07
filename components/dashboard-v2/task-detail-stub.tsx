@@ -1,7 +1,6 @@
 "use client";
 
 import type { KanbanTask } from "./task-card";
-import { cn } from "@/lib/utils";
 
 /** AGT-173: Task Detail stub — title + description (full detail in future AGT-114) */
 interface TaskDetailStubProps {
@@ -18,11 +17,11 @@ export function TaskDetailStub({ task, onClose, embedded = false }: TaskDetailSt
     <div className="flex h-full flex-col overflow-hidden">
       {!embedded && (
         <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-3">
-          <h3 className="text-xs font-medium tracking-widest uppercase text-white/40">Task Detail</h3>
+          <h3 className="text-xs font-medium tracking-widest uppercase text-secondary">Task Detail</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-white/40 transition-colors hover:text-white/90"
+            className="rounded p-1 text-secondary transition-colors hover:text-primary"
             aria-label="Close"
           >
             ✕
@@ -32,25 +31,25 @@ export function TaskDetailStub({ task, onClose, embedded = false }: TaskDetailSt
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-white/40">Title</h4>
-            <p className="mt-1 text-sm text-white/90">{task.title}</p>
+            <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-secondary">Title</h4>
+            <p className="mt-1 text-sm text-primary">{task.title}</p>
           </div>
           {task.linearIdentifier && (
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-white/40">Ticket</h4>
+              <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-secondary">Ticket</h4>
               <a
                 href={task.linearUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-1 font-mono text-xs text-white/40 hover:text-white/90"
+                className="mt-1 font-mono text-xs text-secondary hover:text-primary"
               >
                 {task.linearIdentifier}
               </a>
             </div>
           )}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-white/40">Description</h4>
-            <p className="mt-1 text-sm italic text-white/40">—</p>
+            <h4 className="text-xs font-semibold uppercase tracking-[0.05em] text-secondary">Description</h4>
+            <p className="mt-1 text-sm italic text-secondary">—</p>
           </div>
         </div>
       </div>

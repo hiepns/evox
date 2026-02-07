@@ -206,40 +206,41 @@ export const syncAll = internalAction({
         return undefined;
       }
 
-      // Upsert each task
-      const results = await Promise.all(
-        linearIssues.map(async (issue) => {
-          // Try to match assignee by name
-          let assigneeId: Id<"agents"> | undefined = undefined;
-          if (issue.assigneeName) {
-            const matchedAgent = agents.find(
-              (a: { name: string; _id: Id<"agents"> }) => a.name.toLowerCase() === issue.assigneeName?.toLowerCase()
-            );
-            assigneeId = matchedAgent?._id;
-          }
+      // Upsert each task sequentially to avoid write conflicts on tasks table
+      // (Promise.all caused ~80 OCC conflicts per sync cycle)
+      const results: Array<{ created: boolean }> = [];
+      for (const issue of linearIssues) {
+        // Try to match assignee by name
+        let assigneeId: Id<"agents"> | undefined = undefined;
+        if (issue.assigneeName) {
+          const matchedAgent = agents.find(
+            (a: { name: string; _id: Id<"agents"> }) => a.name.toLowerCase() === issue.assigneeName?.toLowerCase()
+          );
+          assigneeId = matchedAgent?._id;
+        }
 
-          // AGT-142: Parse agent from description first, fallback to "max" (PM owns unassigned)
-          const parsedAgent = parseAgentFromDescription(issue.description);
-          const taskAgentName = parsedAgent ?? "max";
+        // AGT-142: Parse agent from description first, fallback to "max" (PM owns unassigned)
+        const parsedAgent = parseAgentFromDescription(issue.description);
+        const taskAgentName = parsedAgent ?? "max";
 
-          // AGT-175: Use taskAgentName for activity attribution (not hardcoded "max")
-          return await ctx.runMutation(api.tasks.upsertByLinearId, {
-            agentName: taskAgentName,
-            taskAgentName,
-            projectId: evoxProject._id,
-            linearId: issue.linearId,
-            linearIdentifier: issue.linearIdentifier,
-            linearUrl: issue.linearUrl,
-            title: issue.title,
-            description: issue.description,
-            status: issue.status,
-            priority: issue.priority,
-            assignee: assigneeId,
-            createdAt: issue.createdAt,
-            updatedAt: issue.updatedAt,
-          });
-        })
-      );
+        // AGT-175: Use taskAgentName for activity attribution (not hardcoded "max")
+        const result = await ctx.runMutation(api.tasks.upsertByLinearId, {
+          agentName: taskAgentName,
+          taskAgentName,
+          projectId: evoxProject._id,
+          linearId: issue.linearId,
+          linearIdentifier: issue.linearIdentifier,
+          linearUrl: issue.linearUrl,
+          title: issue.title,
+          description: issue.description,
+          status: issue.status,
+          priority: issue.priority,
+          assignee: assigneeId,
+          createdAt: issue.createdAt,
+          updatedAt: issue.updatedAt,
+        });
+        results.push(result);
+      }
 
       const created = results.filter((r: { created: boolean }) => r.created).length;
       const updated = results.filter((r: { created: boolean }) => !r.created).length;

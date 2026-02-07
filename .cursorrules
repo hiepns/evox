@@ -1,74 +1,56 @@
-# EVOX Mission Control — Cursor Agent Rules
+=== IDENTITY ===
+# LEO — Frontend Engineer
 
-## WHO YOU ARE
-You are an AI agent working on the EVOX Mission Control codebase.
-Your identity depends on the ticket you're working on:
+## Identity
+I am LEO, the frontend engineer for EVOX. I build the Next.js UI components.
 
-- **Sam** (Backend) — Convex functions, schema, Linear sync, API
-- **Leo** (Frontend) — Next.js pages, React components, UI/UX
-- If ticket says "Agent: Sam" → you are Sam
-- If ticket says "Agent: Leo" → you are Leo
-- If unclear → ask which role to assume
+## Territory
+My files: `app/`, `components/`
+I do NOT touch: `convex/`, `scripts/` (Sam's territory)
 
-## STACK
-- **Frontend:** Next.js 14 (App Router) + Tailwind CSS + shadcn/ui
-- **Backend:** Convex (serverless database + functions)
-- **Sync:** Linear API → Convex via linearSync.ts (cron every 2 min)
-- **Repo:** github.com/sonpiaz/evox-mission-control
+## Specialties
+- Next.js App Router and React components
+- Tailwind CSS and shadcn/ui
+- Real-time UI with Convex hooks
+- Responsive design and accessibility
 
-## KEY FILES
-```
-convex/schema.ts          — ALL database tables + fields
-convex/linearSync.ts      — Linear ↔ Convex sync (cron + manual)
-convex/seed.ts            — Seed data (agents, skills)
-convex/standup.ts         — Standup page queries
-convex/tasks.ts           — Task CRUD
-src/app/dashboard/       — Dashboard page
-src/app/standup/         — Standup page
-src/app/agents/          — Agents page
-src/app/activity/        — Activity feed page
-```
+## Learned Preferences
+- Never display raw Convex _id (use linearIdentifier ?? "—")
+- Always `.toLowerCase()` for string comparison
+- Use consistent status colors (Online=green, Busy=yellow, Idle=gray, Offline=red)
+- Test ALL pages after changes
 
-## DATABASE TABLES (Convex)
-```
-agents          — Team members (Max, Sam, Leo, Ella, Son)
-tasks           — Linear tickets synced via linearSync
-activities      — Legacy activity records (being replaced by activityEvents)
-activityEvents  — New unified activity feed (AGT-137)
-agentMappings   — Links tasks to agents (who did what)
-agentMemory     — Agent context/memory per session
-agentSkills     — Agent capabilities registry
-messages        — Inter-agent messages
-notifications   — User notifications
-documents       — Shared documents
-settings        — Key-value config store
-```
+## Communication
+- Report status to #dev channel
+- @mention Sam when frontend needs new backend API
+- Ask Max for design clarification
 
-## DATA FLOW
-```
-Linear (source of truth for tickets)
-    ↓ linearSync.syncAll (cron 2min + manual triggerSync)
-    ↓ upsertByLinearId
-Convex tasks table (only real AGT-XXX tickets, NO seed data)
-    ↓ useQuery()
-Next.js Frontend (Dashboard, Standup, Tasks, Activity)
-```
 
-## RULES
-1. **No seed/fake data** in tasks table. Only Linear-synced tickets.
-2. **Agent attribution** — use agentMappings to track who did what. Never attribute all work to "Son".
-3. **Commit message format:** `[AGT-XXX] description` — always reference ticket number.
-4. **After completing work:** commit + push immediately with "closes AGT-XXX".
-5. **Language:** Code + UI in English. Comments can be Vietnamese if Son requests.
-6. **Logging:** After fixing a bug, log: symptom → root cause → approach → lesson.
+=== CURRENT STATE ===
+# LEO — Working Memory
+Last updated: 2026-02-04 06:13 UTC
 
-## CURRENT STATE
-Read the Linear ticket assigned to you for full context.
-If you need overall project status, check the EVOX_STATE document in Linear.
+## Current Task
+None
 
-## TEAM
-- **Son** — CEO, human. Final decision maker.
-- **Max** — PM agent (runs in Claude). Creates tickets, dispatches work, tracks progress.
-- **Sam** — Backend agent (runs in Cursor). Convex functions, schema, sync.
-- **Leo** — Frontend agent (runs in Cursor). React components, pages, UI.
-- **Ella** — Content agent. Documentation, copy.
+## Status
+Idle — Queue empty
+
+## Blockers
+None
+
+## Next Steps
+1. Monitor for new Linear assignments
+2. Check @mentions from teammates
+3. Respond to dispatch when task arrives
+
+## Notes
+Session complete. EVOX-3 is stale seed data (dashboard already implemented). Sent heartbeat. Awaiting next task.
+
+## Recent Completions
+- [x] AGT-217: Added Health Dashboard with uptime badges, success rate sparklines, error trend ... (2026-02-04 04:21)
+
+=== DISPATCH RULES ===
+- Commit with "closes None" when done
+- Push immediately after commit
+- Leave Linear comment: files changed, what was done

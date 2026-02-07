@@ -211,6 +211,7 @@ Open [http://localhost:3000](http://localhost:3000) and you'll see Mission Contr
 | `CONVEX_DEPLOYMENT` | Yes | Your Convex deployment URL |
 | `NEXT_PUBLIC_CONVEX_URL` | Yes | Public Convex URL for client |
 | `LINEAR_API_KEY` | Yes | Linear API key for task sync |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key for headless agent execution |
 
 ---
 

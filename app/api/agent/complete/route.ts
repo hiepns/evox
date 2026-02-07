@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
+import { AGENT_ORDER } from "@/lib/constants";
 
 // Lazily initialize Convex client (avoid build-time evaluation)
 function getConvexClient() {
@@ -30,7 +31,7 @@ function getConvexClient() {
 }
 
 // Valid values for validation
-const VALID_AGENTS = ["leo", "sam", "max", "ella"] as const;
+const VALID_AGENTS = AGENT_ORDER;
 const VALID_ACTIONS = ["completed", "in_progress", "comment"] as const;
 
 type AgentName = (typeof VALID_AGENTS)[number];
@@ -45,8 +46,33 @@ interface CompleteTaskRequest {
   commitHash?: string;
 }
 
+function authenticateRequest(request: NextRequest): NextResponse | null {
+  const apiKey = request.headers.get("x-api-key");
+  const expected = process.env.EVOX_API_KEY;
+
+  if (!expected) {
+    return NextResponse.json(
+      { success: false, error: "Server misconfigured" },
+      { status: 500 }
+    );
+  }
+
+  if (!apiKey || apiKey !== expected) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    );
+  }
+
+  return null; // Authenticated
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Authenticate request
+    const authError = authenticateRequest(request);
+    if (authError) return authError;
+
     // Parse request body
     const body: CompleteTaskRequest = await request.json();
 

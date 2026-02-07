@@ -36,12 +36,12 @@ export function ContextPanelContent({
   return (
     <ContextPanel className="flex flex-col min-h-0">
       <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-3">
-        <h2 className="text-xs font-medium tracking-widest uppercase text-white/40">{headerTitle}</h2>
+        <h2 className="text-xs font-medium tracking-widest uppercase text-secondary">{headerTitle}</h2>
         {(mode === "agent" || mode === "task") && (
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-white/40 transition-colors hover:text-white/90"
+            className="rounded p-1 text-secondary transition-colors hover:text-primary"
             aria-label="Close"
           >
             ✕

@@ -7,6 +7,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { VALID_AGENTS } from "./agentRegistry";
 
 /**
  * Parse @mentions from content
@@ -17,9 +18,9 @@ export function parseMentions(content: string): string[] {
   const matches = content.match(regex) || [];
   const names = matches.map((m) => m.slice(1).toLowerCase());
 
-  // @all expands to all agents
+  // @all expands to all agents + son (human CEO)
   if (names.includes("all")) {
-    return ["max", "sam", "leo", "son"];
+    return [...VALID_AGENTS, "son"];
   }
 
   return [...new Set(names)];

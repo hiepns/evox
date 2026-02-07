@@ -8,10 +8,10 @@ type KanbanStatus = "backlog" | "todo" | "in_progress" | "review" | "done";
 type Priority = "low" | "medium" | "high" | "urgent";
 
 const priorityColors: Record<Priority, string> = {
-  urgent: "border-l-red-500",
-  high: "border-l-green-500",
+  urgent: "border-l-red-700",
+  high: "border-l-green-700",
   medium: "border-l-yellow-500",
-  low: "border-l-gray-500",
+  low: "border-l-gray-700",
 };
 
 export interface KanbanTask {
@@ -49,21 +49,21 @@ export function TaskCard({ task, onClick, onAssigneeClick }: TaskCardProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full rounded-lg border border-gray-800 bg-[#0a0a0a] p-4 text-left transition-colors hover:border-gray-700 hover:bg-gray-800/50",
+        "w-full rounded-lg border border-border-default bg-surface-1 p-4 text-left transition-colors hover:border-border-hover hover:bg-surface-2",
         "border-l-4",
         barColor
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-zinc-50">{task.title}</p>
+          <p className="truncate text-sm font-medium text-primary">{task.title}</p>
           {task.linearIdentifier && (
             <a
               href={task.linearUrl ?? "#"}
               target="_blank"
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
-              className="font-mono text-xs text-[#888] hover:text-zinc-400 whitespace-nowrap"
+              className="font-mono text-xs text-secondary hover:text-secondary whitespace-nowrap"
             >
               {task.linearIdentifier}
             </a>
@@ -75,27 +75,27 @@ export function TaskCard({ task, onClick, onAssigneeClick }: TaskCardProps) {
             onClick={onAssigneeClick && task.assigneeId ? handleAssigneeClick : undefined}
             className={cn(
               "shrink-0",
-              onAssigneeClick && task.assigneeId && "cursor-pointer rounded hover:ring-1 hover:ring-[#333]"
+              onAssigneeClick && task.assigneeId && "cursor-pointer rounded hover:ring-1 hover:ring-border-hover"
             )}
             title={onAssigneeClick && task.assigneeId ? `Open ${task.assigneeName ?? "agent"}` : undefined}
           >
-            <Avatar className="h-6 w-6 border border-gray-700">
-              <AvatarFallback className="bg-gray-800 text-[10px] text-zinc-50">{task.assigneeAvatar}</AvatarFallback>
+            <Avatar className="h-6 w-6 border border-border-default">
+              <AvatarFallback className="bg-surface-4 text-[10px] text-primary">{task.assigneeAvatar}</AvatarFallback>
             </Avatar>
           </span>
         )}
       </div>
       {task.description && (
-        <p className="mt-2 line-clamp-2 text-xs text-gray-400">{task.description}</p>
+        <p className="mt-2 line-clamp-2 text-xs text-secondary">{task.description}</p>
       )}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {task.tags?.slice(0, 3).map((tag) => (
-          <span key={tag} className="rounded bg-gray-800 px-1.5 py-0.5 text-xs text-gray-400">
+          <span key={tag} className="rounded bg-surface-4 px-1.5 py-0.5 text-xs text-secondary">
             {tag}
           </span>
         ))}
         {task.updatedAt != null && (
-          <span className="text-xs text-[#555]">{formatDistanceToNow(task.updatedAt, { addSuffix: true })}</span>
+          <span className="text-xs text-secondary">{formatDistanceToNow(task.updatedAt, { addSuffix: true })}</span>
         )}
       </div>
     </button>

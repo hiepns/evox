@@ -1,0 +1,316 @@
+# EVOX UI Redesign — Wireframes
+
+> **North Star:** CEO/COO reads and decides in 3 seconds.
+
+**Status:** 🟢 Core components shipped. MobileCEODashboard live on uat.
+
+---
+
+## The 3-Second Breakdown
+
+What CEO sees each second:
+
+| Second | What's Visible | Decision |
+|--------|----------------|----------|
+| **1** | 🟢/🟡/🔴 Hero Status | "Is everything OK?" |
+| **2** | Tasks + Cost metrics | "Are we productive?" |
+| **3** | Alert list (if any) | "What needs my action?" |
+
+**If GREEN:** CEO can close app. Team is working.
+**If YELLOW:** CEO scans alerts. Monitor situation.
+**If RED:** CEO takes action. Something needs fixing.
+
+---
+
+## Design Principles
+
+1. **3-Second Rule** — Most critical info visible immediately
+2. **Traffic Light System** — Green/Yellow/Red = Good/Warning/Action
+3. **Mobile-First** — Works on phone, scales to desktop
+4. **Action-Oriented** — Show what needs attention NOW
+5. **Glanceable** — Numbers > text, icons > labels
+
+---
+
+## Mobile Wireframes (375px)
+
+### CEO Dashboard — Hero View
+
+```
+┌─────────────────────────────┐
+│  EVOX                    ⚙️  │ <- Header (minimal)
+├─────────────────────────────┤
+│                             │
+│      🟢 ALL GOOD            │ <- HERO STATUS
+│         or                  │    (Full width)
+│      🟡 2 BLOCKERS          │    (Largest element)
+│         or                  │
+│      🔴 CRITICAL            │
+│                             │
+├─────────────────────────────┤
+│  TODAY                      │
+│ ┌─────────┬─────────┐       │
+│ │   12    │  $4.20  │       │ <- Key metrics (2 col)
+│ │ tasks   │  spent  │       │
+│ └─────────┴─────────┘       │
+├─────────────────────────────┤
+│  NEEDS ATTENTION            │ <- Action items
+│ ┌─────────────────────────┐ │
+│ │ 🔴 SAM offline 15m      │ │
+│ │ 🟡 AGT-280 blocked      │ │
+│ │ 🟡 LEO waiting review   │ │
+│ └─────────────────────────┘ │
+├─────────────────────────────┤
+│  TEAM (4 active)            │
+│ ┌──────┬──────┬──────┬────┐ │
+│ │ MAX  │ SAM  │ LEO  │ +2 │ │ <- Agent pills
+│ │  🟢  │  🔴  │  🟡  │    │ │
+│ └──────┴──────┴──────┴────┘ │
+├─────────────────────────────┤
+│  LIVE FEED                  │
+│  • MAX created AGT-281      │
+│  • LEO pushed to uat        │
+│  • SAM completed AGT-279    │
+└─────────────────────────────┘
+```
+
+### Agent Detail — Quick View
+
+```
+┌─────────────────────────────┐
+│  ← SAM                   🔴  │ <- Back + status
+├─────────────────────────────┤
+│                             │
+│  Backend Engineer           │
+│  Last seen: 15 min ago      │
+│                             │
+│ ┌─────────────────────────┐ │
+│ │  TODAY: 3 tasks         │ │
+│ │  COST:  $1.40           │ │
+│ │  AVG:   $0.47/task      │ │
+│ └─────────────────────────┘ │
+├─────────────────────────────┤
+│  CURRENT TASK               │
+│  None (offline)             │
+├─────────────────────────────┤
+│  RECENT ACTIVITY            │
+│  • Completed AGT-279        │
+│  • Pushed fix to uat        │
+│  • Started at 07:30         │
+├─────────────────────────────┤
+│  [  PING SAM  ]             │ <- Primary action
+└─────────────────────────────┘
+```
+
+---
+
+## Desktop Wireframes (1280px+)
+
+### CEO Dashboard — Full View
+
+```
+┌────────────────────────────────────────────────────────────────────────────────┐
+│  EVOX Mission Control                                              🔔  ⚙️  👤  │
+├────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                │
+│  ┌──────────────────────────────┐  ┌─────────────────────────────────────────┐ │
+│  │                              │  │  METRICS                                │ │
+│  │      🟢 ALL SYSTEMS GO       │  │ ┌─────────┬─────────┬─────────┬───────┐ │ │
+│  │                              │  │ │   12    │  $4.20  │   85%   │  4/5  │ │ │
+│  │   4 agents working           │  │ │ tasks   │  spent  │ automat │ team  │ │ │
+│  │   12 tasks completed         │  │ └─────────┴─────────┴─────────┴───────┘ │ │
+│  │   $4.20 spent                │  │                                         │ │
+│  │                              │  │  VELOCITY (7 days)                      │ │
+│  └──────────────────────────────┘  │  ▁▂▄▆█▇▅ ← sparkline                    │ │
+│                                    └─────────────────────────────────────────┘ │
+│  ┌──────────────────────────────────────────────────────────────────────────┐  │
+│  │  TEAM STATUS                                                              │  │
+│  │ ┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐  │  │
+│  │ │ MAX 🟢      │ SAM 🔴      │ LEO 🟡      │ QUINN 🟢   │ MAYA 🟢     │  │  │
+│  │ │ PM          │ Backend     │ Frontend    │ QA          │ Design      │  │  │
+│  │ │ 3 tasks     │ Offline     │ Working     │ 2 tasks     │ 1 task      │  │  │
+│  │ │ $0.80       │ $1.40       │ $0.90       │ $0.60       │ $0.50       │  │  │
+│  │ └─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                │
+│  ┌─────────────────────────────────┐  ┌─────────────────────────────────────┐  │
+│  │  🚨 NEEDS ATTENTION (2)         │  │  📋 LIVE ACTIVITY                   │  │
+│  │ ┌─────────────────────────────┐ │  │  07:45 MAX created AGT-281          │  │
+│  │ │ 🔴 SAM offline 15 min      │ │  │  07:44 LEO pushed to uat            │  │
+│  │ │    Last: Completed AGT-279  │ │  │  07:42 SAM completed AGT-279        │  │
+│  │ └─────────────────────────────┘ │  │  07:40 QUINN approved PR #42        │  │
+│  │ ┌─────────────────────────────┐ │  │  07:38 MAYA pushed design system    │  │
+│  │ │ 🟡 AGT-280 blocked 2h      │ │  │  07:35 MAX assigned LEO             │  │
+│  │ │    Waiting: Deploy access   │ │  │                                     │  │
+│  │ └─────────────────────────────┘ │  │                                     │  │
+│  └─────────────────────────────────┘  └─────────────────────────────────────┘  │
+│                                                                                │
+└────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Color System
+
+### Status Colors (Traffic Light)
+
+| Status | Color | Meaning | Action |
+|--------|-------|---------|--------|
+| 🟢 Green | `#22c55e` | All good | None |
+| 🟡 Yellow | `#eab308` | Warning | Monitor |
+| 🔴 Red | `#ef4444` | Critical | Act now |
+
+### Hero Status Logic
+
+```typescript
+function getHeroStatus(data) {
+  // Priority 1: Critical issues (RED)
+  if (data.offlineAgents > 0 || data.criticalTasks > 0) {
+    return { status: "critical", color: "red", message: "ACTION NEEDED" };
+  }
+
+  // Priority 2: Warnings (YELLOW)
+  if (data.blockedTasks > 0 || data.idleAgents > 1) {
+    return { status: "warning", color: "yellow", message: `${data.blockedTasks} BLOCKERS` };
+  }
+
+  // Priority 3: All clear (GREEN)
+  return { status: "good", color: "green", message: "ALL GOOD" };
+}
+```
+
+---
+
+## Components Needed
+
+### 1. HeroStatus (New)
+```
+┌─────────────────────────────┐
+│      🟢 ALL GOOD            │
+│   4 agents • 12 tasks       │
+└─────────────────────────────┘
+```
+- Full width on mobile
+- Largest text on page
+- Background color matches status
+
+### 2. MetricGrid (Update)
+```
+┌─────────┬─────────┐
+│   12    │  $4.20  │
+│ tasks   │  spent  │
+└─────────┴─────────┘
+```
+- 2 columns on mobile
+- 4 columns on desktop
+- Tap to drill down
+
+### 3. AlertList (New)
+```
+┌─────────────────────────────┐
+│ 🔴 SAM offline 15m         │
+│ 🟡 AGT-280 blocked         │
+└─────────────────────────────┘
+```
+- Sorted by severity
+- Tap to action
+- Empty = hidden
+
+### 4. TeamStrip (New)
+```
+┌──────┬──────┬──────┬────┐
+│ MAX  │ SAM  │ LEO  │ +2 │
+│  🟢  │  🔴  │  🟡  │    │
+└──────┴──────┴──────┴────┘
+```
+- Horizontal scroll on mobile
+- Shows top 4 + overflow
+- Tap for detail
+
+### 5. ActivityStream (Update)
+```
+• MAX created AGT-281
+• LEO pushed to uat
+```
+- Compact single line
+- Relative time
+- Infinite scroll
+
+---
+
+## Task Breakdown
+
+### LEO (Frontend)
+
+| Task | Priority | Est | Description |
+|------|----------|-----|-------------|
+| `LEO-1` | P0 | 1h | Create HeroStatus component |
+| `LEO-2` | P0 | 1h | Create AlertList component |
+| `LEO-3` | P1 | 30m | Create TeamStrip component |
+| `LEO-4` | P1 | 1h | Update MetricGrid for mobile |
+| `LEO-5` | P1 | 30m | Implement mobile CEO layout |
+| `LEO-6` | P2 | 1h | Add tap-to-detail navigation |
+| `LEO-7` | P2 | 30m | Add pull-to-refresh |
+
+### FINN (Frontend)
+
+| Task | Priority | Est | Description |
+|------|----------|-----|-------------|
+| `FINN-1` | P1 | 1h | Agent detail mobile view |
+| `FINN-2` | P1 | 30m | Ping agent action button |
+| `FINN-3` | P2 | 1h | Activity stream infinite scroll |
+| `FINN-4` | P2 | 30m | Empty states for all sections |
+
+### SAM (Backend)
+
+| Task | Priority | Est | Description |
+|------|----------|-----|-------------|
+| `SAM-1` | P0 | 30m | Add `getHeroStatus` query |
+| `SAM-2` | P0 | 30m | Add `getAlerts` query (sorted) |
+| `SAM-3` | P1 | 30m | Optimize `getAgentSummary` |
+
+---
+
+## Implementation Order
+
+1. **Phase 1: Core Layout** (Today)
+   - HeroStatus component
+   - AlertList component
+   - Mobile CEO layout
+
+2. **Phase 2: Team View** (Tomorrow)
+   - TeamStrip component
+   - Agent detail view
+   - Ping action
+
+3. **Phase 3: Polish** (Day 3)
+   - Animations
+   - Pull-to-refresh
+   - Empty states
+
+---
+
+## Success Criteria
+
+- [x] CEO can see system health in < 1 second (HeroStatus shipped)
+- [x] All critical alerts visible without scrolling (AlertList shipped)
+- [x] Works on iPhone SE (375px) (MobileCEODashboard shipped)
+- [x] All interactive elements > 44px touch target (verified)
+- [ ] Page loads < 2 seconds on 3G (needs testing)
+
+---
+
+## Shipped Components
+
+| Component | File | Status |
+|-----------|------|--------|
+| HeroStatus | `components/evox/redesign/HeroStatus.tsx` | ✅ Shipped |
+| AlertList | `components/evox/redesign/AlertList.tsx` | ✅ Shipped |
+| MobileCEODashboard | `components/evox/redesign/MobileCEODashboard.tsx` | ✅ Shipped |
+| TeamStrip | — | 🔄 Inline in MobileCEODashboard |
+| MetricRow | — | 🔄 Inline in MobileCEODashboard |
+
+---
+
+_Created by MAYA | Feb 5, 2026_
+_Last updated: Feb 5, 2026 - Components shipped to uat_

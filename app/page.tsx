@@ -1,56 +1,95 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { startOfDay, endOfDay, startOfWeek, endOfWeek, subDays } from "date-fns";
 import { NotificationTopBarWrapper } from "@/components/notification-topbar-wrapper";
 import { MissionQueue } from "@/components/dashboard-v2/mission-queue";
 import { SettingsModal } from "@/components/dashboard-v2/settings-modal";
-import { AgentSidebar } from "@/components/evox/AgentSidebar";
-import { ScratchPad } from "@/components/evox/ScratchPad";
-import { DispatchQueue } from "@/components/evox/DispatchQueue";
 import { AgentSettingsModal } from "@/components/evox/AgentSettingsModal";
 import { ShortcutsHelpModal } from "@/components/evox/ShortcutsHelpModal";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { AgentProfileModal } from "@/components/dashboard-v2/agent-profile-modal";
+import { AgentDetailSlidePanel } from "@/components/dashboard-v2/agent-detail-slide-panel";
 import { ActivityDrawer } from "@/components/dashboard-v2/activity-drawer";
 import { TaskDetailModal } from "@/components/dashboard-v2/task-detail-modal";
+import { ViewTabs, type MainViewTab } from "@/components/evox/ViewTabs";
+import { CommunicationLog } from "@/components/evox/CommunicationLog";
+import { CEODashboard, type TimeRange } from "@/components/evox/CEODashboard";
+import { HallOfFame } from "@/components/evox/HallOfFame";
 import type { KanbanTask } from "@/components/dashboard-v2/task-card";
 import type { DateFilterMode } from "@/components/dashboard-v2/date-filter";
-
-/** Agent order: MAX → SAM → LEO */
-const AGENT_ORDER = ["max", "sam", "leo"];
-function sortAgents<T extends { name: string }>(list: T[]): T[] {
-  return [...list].sort((a, b) => {
-    const i = AGENT_ORDER.indexOf(a.name.toLowerCase());
-    const j = AGENT_ORDER.indexOf(b.name.toLowerCase());
-    if (i === -1 && j === -1) return a.name.localeCompare(b.name);
-    if (i === -1) return 1;
-    if (j === -1) return -1;
-    return i - j;
-  });
-}
+import { sortAgents, AGENT_ORDER } from "@/lib/constants";
 
 /** AGT-181: 2-panel layout — [Sidebar 220px] | [Kanban flex-1]. Agent Profile → Modal, Activity → Drawer */
 export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const [date, setDate] = useState(new Date());
   const [dateMode, setDateMode] = useState<DateFilterMode>("day");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activityDrawerOpen, setActivityDrawerOpen] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState<Id<"agents"> | null>(null);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
-  const [scratchPadOpen, setScratchPadOpen] = useState(false);
-  const [dispatchQueueOpen, setDispatchQueueOpen] = useState(false);
   const [agentSettingsId, setAgentSettingsId] = useState<Id<"agents"> | null>(null);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+  const [overviewTimeRange, setOverviewTimeRange] = useState<TimeRange>("1d");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const viewParam = searchParams.get("view") as MainViewTab | null;
+  const activeViewTab: MainViewTab = viewParam && ["ceo", "kanban", "comms", "team"].includes(viewParam) ? viewParam : "ceo";
+  const setActiveViewTab = useCallback((tab: MainViewTab) => {
+    router.replace(`/?view=${tab}`, { scroll: false });
+  }, [router]);
 
   const agents = useQuery(api.agents.list);
-  const dashboardStats = useQuery(api.dashboard.getStats);
+
+  // Calculate date range for top bar stats — adapts to active view
+  const { startTs, endTs } = useMemo(() => {
+    if (activeViewTab === "ceo") {
+      // Overview: use overview time range
+      const daysBack = overviewTimeRange === "1d" ? 1 : overviewTimeRange === "7d" ? 7 : 30;
+      const now = new Date();
+      return {
+        startTs: daysBack === 1 ? startOfDay(now).getTime() : subDays(now, daysBack).getTime(),
+        endTs: now.getTime(),
+      };
+    }
+    // Kanban and other views: use kanban dateMode
+    if (dateMode === "day") {
+      return {
+        startTs: startOfDay(date).getTime(),
+        endTs: endOfDay(date).getTime(),
+      };
+    } else if (dateMode === "week") {
+      return {
+        startTs: startOfWeek(date, { weekStartsOn: 1 }).getTime(),
+        endTs: endOfWeek(date, { weekStartsOn: 1 }).getTime(),
+      };
+    } else {
+      const now = new Date();
+      return {
+        startTs: subDays(now, 30).getTime(),
+        endTs: now.getTime(),
+      };
+    }
+  }, [date, dateMode, activeViewTab, overviewTimeRange]);
+
+  const dashboardStats = useQuery(api.dashboard.getStats, { startTs, endTs });
 
   const agentsList = useMemo(() => {
     if (!Array.isArray(agents) || agents.length === 0) return [];
-    return sortAgents(agents as { _id: Id<"agents">; name: string; role: string; status: string; avatar: string; lastSeen?: number }[]);
+    const active = (agents as { _id: Id<"agents">; name: string; role: string; status: string; avatar: string; lastSeen?: number }[])
+      .filter((a) => (AGENT_ORDER as readonly string[]).includes(a.name.toLowerCase()));
+    return sortAgents(active);
   }, [agents]);
 
   const activeCount = useMemo(
@@ -67,7 +106,7 @@ export default function Home() {
   useKeyboardShortcuts({
     agents: agentsList,
     onAgentSwitch: (agentId) => setSelectedAgentId(agentId),
-    onToggleScratchPad: () => setScratchPadOpen((prev) => !prev),
+    onToggleScratchPad: () => {},
     onToggleHelp: () => setShortcutsHelpOpen((prev) => !prev),
     onCloseModals: () => {
       setSelectedAgentId(null);
@@ -77,6 +116,7 @@ export default function Home() {
       setSettingsOpen(false);
       setActivityDrawerOpen(false);
     },
+    onViewTabChange: setActiveViewTab,
   });
 
   const handleAgentClick = (agentId: Id<"agents">) => {
@@ -85,10 +125,6 @@ export default function Home() {
     } else {
       setSelectedAgentId(agentId);
     }
-  };
-
-  const handleAgentDoubleClick = (agentId: Id<"agents">) => {
-    setAgentSettingsId(agentId);
   };
 
   const handleTaskClick = (task: KanbanTask) => {
@@ -102,7 +138,7 @@ export default function Home() {
     (taskCounts.backlog ?? 0) + (taskCounts.todo ?? 0) + (taskCounts.inProgress ?? 0) + (taskCounts.review ?? 0) + doneCount;
 
   return (
-    <div className="flex h-screen flex-col bg-[#0a0a0a]">
+    <div className="flex h-screen flex-col bg-base">
       <NotificationTopBarWrapper
         agentsActive={activeCount}
         tasksInQueue={taskCounts.todo ?? 0}
@@ -117,33 +153,48 @@ export default function Home() {
       <TaskDetailModal open={selectedTask !== null} task={selectedTask} onClose={() => setSelectedTask(null)} />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="flex flex-col w-[220px]">
-          <AgentSidebar
-            selectedAgentId={selectedAgentId}
-            onAgentClick={handleAgentClick}
-            onAgentDoubleClick={handleAgentDoubleClick}
-            className="flex-1"
-          />
-          <DispatchQueue
-            collapsed={!dispatchQueueOpen}
-            onToggle={() => setDispatchQueueOpen((prev) => !prev)}
-          />
-          <ScratchPad isOpen={scratchPadOpen} onToggle={() => setScratchPadOpen((prev) => !prev)} />
-        </div>
         <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
-          <MissionQueue
-            date={date}
-            dateMode={dateMode}
-            onDateModeChange={setDateMode}
-            onDateChange={setDate}
-            onTaskClick={handleTaskClick}
-            onAssigneeClick={(id) => handleAgentClick(id as Id<"agents">)}
-          />
+          <ViewTabs activeTab={activeViewTab} onTabChange={setActiveViewTab} />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {activeViewTab === "ceo" && (
+              <CEODashboard
+                className="h-full"
+                timeRange={overviewTimeRange}
+                onTimeRangeChange={setOverviewTimeRange}
+                onAgentClick={(name) => {
+                  const agent = agentsList.find(a => a.name.toLowerCase() === name.toLowerCase());
+                  if (agent) handleAgentClick(agent._id);
+                }}
+              />
+            )}
+            {activeViewTab === "kanban" && (
+              <MissionQueue
+                date={date}
+                dateMode={dateMode}
+                onDateModeChange={setDateMode}
+                onDateChange={setDate}
+                onTaskClick={handleTaskClick}
+                onAssigneeClick={(id) => handleAgentClick(id as Id<"agents">)}
+              />
+            )}
+            {activeViewTab === "comms" && (
+              <CommunicationLog className="h-full" />
+            )}
+            {activeViewTab === "team" && (
+              <HallOfFame
+                className="h-full"
+                onAgentClick={(name) => {
+                  const agent = agentsList.find(a => a.name.toLowerCase() === name.toLowerCase());
+                  if (agent) handleAgentClick(agent._id);
+                }}
+              />
+            )}
+          </div>
         </main>
       </div>
 
       {selectedAgent && (
-        <AgentProfileModal
+        <AgentDetailSlidePanel
           open={selectedAgentId !== null}
           agentId={selectedAgent._id}
           name={selectedAgent.name}

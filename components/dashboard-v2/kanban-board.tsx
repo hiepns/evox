@@ -27,17 +27,17 @@ interface KanbanBoardProps {
 export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "" }: KanbanBoardProps) {
   const byStatus = (status: KanbanStatus) => {
     if (status === "in_progress") {
-      return tasks.filter((t) => t.status === "in_progress" || t.status === "review");
+      return tasks.filter((t) => t.status?.toLowerCase() === "in_progress" || t.status?.toLowerCase() === "review");
     }
-    return tasks.filter((t) => t.status === status);
+    return tasks.filter((t) => t.status?.toLowerCase() === status.toLowerCase());
   };
 
   // AGT-184: Calculate counts for analytics panel (right side)
   const counts = useMemo(() => {
-    const backlog = tasks.filter((t) => t.status === "backlog").length;
-    const todo = tasks.filter((t) => t.status === "todo").length;
-    const inProgress = tasks.filter((t) => t.status === "in_progress" || t.status === "review").length;
-    const done = tasks.filter((t) => t.status === "done").length;
+    const backlog = tasks.filter((t) => t.status?.toLowerCase() === "backlog").length;
+    const todo = tasks.filter((t) => t.status?.toLowerCase() === "todo").length;
+    const inProgress = tasks.filter((t) => t.status?.toLowerCase() === "in_progress" || t.status?.toLowerCase() === "review").length;
+    const done = tasks.filter((t) => t.status?.toLowerCase() === "done").length;
     const total = backlog + todo + inProgress + done;
     const completionRate = total > 0 ? Math.round((done / total) * 100) : 0;
     return { backlog, todo, inProgress, done, total, completionRate };
@@ -48,19 +48,19 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
       {COLUMNS.map((col) => {
         const columnTasks = byStatus(col.status);
         const isEmpty = columnTasks.length === 0;
-        const isDone = col.status === "done";
+        const isDone = col.status?.toLowerCase() === "done";
         return (
           <div
             key={col.status}
-            className="flex w-64 shrink-0 flex-col rounded-lg border border-gray-800 bg-[#0a0a0a]"
+            className="flex w-64 shrink-0 flex-col rounded-lg border border-border-hover bg-base"
           >
-            <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
-              <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400">{col.title}</h3>
-              <span className="rounded-full bg-gray-800 px-2 py-0.5 text-xs text-gray-500">{columnTasks.length}</span>
+            <div className="flex items-center justify-between border-b border-border-default px-3 py-2">
+              <h3 className="text-xs font-medium uppercase tracking-wider text-primary">{col.title}</h3>
+              <span className="rounded-full bg-surface-4 px-2 py-0.5 text-xs text-primary tabular-nums">{columnTasks.length}</span>
             </div>
             <div className="flex-1 space-y-2 overflow-y-auto p-2 min-h-0">
               {isEmpty && isDone ? (
-                <p className="py-6 text-center text-xs text-gray-500">No completed tasks</p>
+                <p className="py-6 text-center text-xs text-tertiary">No completed tasks</p>
               ) : (
                 columnTasks.map((task) => (
                   <TaskCard
@@ -77,16 +77,16 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
       })}
 
       {/* AGT-184: Analytics panel — right side, shows all status counts */}
-      <div className="flex w-48 shrink-0 flex-col rounded-lg border border-gray-800 bg-[#0a0a0a]">
-        <div className="border-b border-gray-800 px-3 py-2">
-          <h3 className="text-xs font-medium uppercase tracking-wider text-gray-400">Analytics</h3>
+      <div className="flex w-48 shrink-0 flex-col rounded-lg border border-border-hover bg-base">
+        <div className="border-b border-border-default px-3 py-2">
+          <h3 className="text-xs font-medium uppercase tracking-wider text-secondary">Analytics</h3>
         </div>
         <div className="flex-1 space-y-3 p-3">
           {/* Completion Rate */}
           <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
-            <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Completion</span>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Completion</span>
             <div className="mt-1 text-2xl font-semibold text-amber-400">{counts.completionRate}%</div>
-            <div className="text-xs text-white/30">({counts.done}/{counts.total})</div>
+            <div className="text-xs text-tertiary">({counts.done}/{counts.total})</div>
             <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
               <div
                 className="h-full rounded-full bg-amber-400 transition-[width] duration-300"
@@ -100,7 +100,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-blue-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">In Progress</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">In Progress</span>
               </div>
               <span className="text-lg font-semibold text-blue-400">{counts.inProgress}</span>
             </div>
@@ -108,7 +108,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Queue</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Queue</span>
               </div>
               <span className="text-lg font-semibold text-yellow-400">{counts.todo}</span>
             </div>
@@ -116,7 +116,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-white/50" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Backlog</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Backlog</span>
               </div>
               <span className="text-lg font-semibold text-white/60">{counts.backlog}</span>
             </div>
@@ -124,7 +124,7 @@ export function KanbanBoard({ tasks, onTaskClick, onAssigneeClick, className = "
             <div className="flex items-center justify-between rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-green-400" />
-                <span className="text-[10px] font-medium uppercase tracking-wider text-white/40">Done</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-secondary">Done</span>
               </div>
               <span className="text-lg font-semibold text-green-400">{counts.done}</span>
             </div>

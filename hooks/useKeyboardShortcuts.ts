@@ -2,6 +2,7 @@
 
 import { useHotkeys } from "react-hotkeys-hook";
 import { Id } from "@/convex/_generated/dataModel";
+import type { MainViewTab } from "@/components/evox/ViewTabs";
 
 interface UseKeyboardShortcutsProps {
   agents: { _id: Id<"agents"> }[];
@@ -9,6 +10,7 @@ interface UseKeyboardShortcutsProps {
   onToggleScratchPad: () => void;
   onToggleHelp: () => void;
   onCloseModals: () => void;
+  onViewTabChange?: (tab: MainViewTab) => void;
 }
 
 export function useKeyboardShortcuts({
@@ -17,10 +19,39 @@ export function useKeyboardShortcuts({
   onToggleScratchPad,
   onToggleHelp,
   onCloseModals,
+  onViewTabChange,
 }: UseKeyboardShortcutsProps) {
-  // Cmd+1 = switch to agent 1
+  // Cmd+0/1/2/3 = switch view tabs
+  useHotkeys(
+    "meta+0",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("ceo");
+    },
+    { enableOnFormTags: false }
+  );
+
   useHotkeys(
     "meta+1",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("kanban");
+    },
+    { enableOnFormTags: false }
+  );
+
+  useHotkeys(
+    "meta+2",
+    (e) => {
+      e.preventDefault();
+      onViewTabChange?.("comms");
+    },
+    { enableOnFormTags: false }
+  );
+
+  // Cmd+Shift+1/2/3 = switch to agent 1/2/3
+  useHotkeys(
+    "meta+shift+1",
     (e) => {
       e.preventDefault();
       if (agents[0]) onAgentSwitch(agents[0]._id);
@@ -28,9 +59,8 @@ export function useKeyboardShortcuts({
     { enableOnFormTags: false }
   );
 
-  // Cmd+2 = switch to agent 2
   useHotkeys(
-    "meta+2",
+    "meta+shift+2",
     (e) => {
       e.preventDefault();
       if (agents[1]) onAgentSwitch(agents[1]._id);
@@ -38,9 +68,8 @@ export function useKeyboardShortcuts({
     { enableOnFormTags: false }
   );
 
-  // Cmd+3 = switch to agent 3
   useHotkeys(
-    "meta+3",
+    "meta+shift+3",
     (e) => {
       e.preventDefault();
       if (agents[2]) onAgentSwitch(agents[2]._id);
